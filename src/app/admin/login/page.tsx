@@ -51,17 +51,17 @@ export default function AdminLoginPage() {
           <Image
             src={brand.logo}
             alt={brand.name}
-            width={160}
-            height={56}
+            width={140}
+            height={180}
             unoptimized
-            className="h-11 w-auto object-contain"
+            className="h-16 w-auto object-contain"
           />
         </div>
         <p className="label-caps mt-6 text-center">Administration</p>
-        <h1 className="mt-3 text-center font-serif text-3xl text-[#e8e2d3]">
+        <h1 className="mt-3 text-center font-serif text-3xl text-[#171717]">
           Connexion
         </h1>
-        <p className="mt-2 text-sm text-[#a6917c]">
+        <p className="mt-2 text-sm text-[#a3a3a3]">
           Gérez vos produits, tarifs et photos depuis cet espace.
         </p>
 

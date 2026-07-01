@@ -55,7 +55,7 @@ export function AdminNav({ mobileOpen = false, onClose }: AdminNavProps) {
           className="h-10 w-auto object-contain opacity-90"
         />
         <p className="label-caps mt-5">Administration</p>
-        <p className="mt-1 font-serif text-lg text-[#e8e2d3]">{brand.name}</p>
+        <p className="mt-1 font-serif text-lg text-[#171717]">{brand.name}</p>
       </div>
 
       <nav className="admin-nav">

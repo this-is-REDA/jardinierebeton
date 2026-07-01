@@ -37,7 +37,7 @@ export default function RootLayout({
       lang="fr"
       className={`${playfair.variable} ${dmSans.variable} scroll-smooth`}
     >
-      <body className="min-h-screen bg-[#1c1917] font-sans text-[#e8e2d3] antialiased">
+      <body className="min-h-screen bg-[#ffffff] font-sans text-[#171717] antialiased">
         {children}
       </body>
     </html>

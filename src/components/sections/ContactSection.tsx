@@ -48,18 +48,18 @@ export function ContactSection() {
             Indiquez-nous le modèle, la finition et la quantité souhaités.
             Nous vous répondons rapidement avec un devis personnalisé.
           </p>
-          <p className="mt-4 text-sm text-[#c9bfb0]">
+          <p className="mt-4 text-sm text-[#525252]">
             {brand.email} · {brand.delivery}
           </p>
         </div>
 
         {status === "success" ? (
-          <div className="mt-12 max-w-2xl border border-[rgba(138,154,120,0.3)] bg-[#252220] p-10 text-center">
-            <CheckCircle className="mx-auto text-[#8a9a78]" size={40} />
-            <p className="mt-4 font-serif text-xl text-[#e8e2d3]">
+          <div className="mt-12 max-w-2xl border border-[rgba(0, 0, 0,0.3)] bg-[#f5f5f5] p-10 text-center">
+            <CheckCircle className="mx-auto text-[#171717]" size={40} />
+            <p className="mt-4 font-serif text-xl text-[#171717]">
               Message envoyé avec succès
             </p>
-            <p className="mt-2 text-sm text-[#a6917c]">
+            <p className="mt-2 text-sm text-[#a3a3a3]">
               Nous vous répondrons sous 48h.
             </p>
             <button
@@ -120,7 +120,7 @@ export function ContactSection() {
                   className="input-field"
                 >
                   {contactSubjects.map((s) => (
-                    <option key={s} value={s} className="bg-[#252220]">
+                    <option key={s} value={s} className="bg-[#f5f5f5]">
                       {s}
                     </option>
                   ))}

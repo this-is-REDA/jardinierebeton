@@ -111,15 +111,15 @@ export function AdminPricingManager() {
   }
 
   if (loading) {
-    return <p className="text-[#a6917c]">Chargement...</p>;
+    return <p className="text-[#a3a3a3]">Chargement...</p>;
   }
 
   if (!families.length) {
     return (
       <div className="admin-card">
-        <p className="text-[#a6917c]">
+        <p className="text-[#a3a3a3]">
           Aucune gamme pour le moment.{" "}
-          <Link href="/admin/produits" className="text-[#8a9a78] hover:text-[#e8e2d3]">
+          <Link href="/admin/produits" className="text-[#171717] hover:text-[#000000]">
             Ajoutez une gamme dans Produits
           </Link>
           .
@@ -139,13 +139,13 @@ export function AdminPricingManager() {
         return (
           <section key={family.id} className="admin-card">
             <div>
-              <h2 className="font-serif text-2xl text-[#e8e2d3]">{family.name}</h2>
-              <p className="mt-1 text-xs text-[#7a6f63]">{family.slug}</p>
+              <h2 className="font-serif text-2xl text-[#171717]">{family.name}</h2>
+              <p className="mt-1 text-xs text-[#a3a3a3]">{family.slug}</p>
             </div>
 
             <div className="admin-mobile-only admin-variant-cards mt-6">
               {familyVariants.length === 0 && familyDrafts.length === 0 && (
-                <p className="py-4 text-center text-sm text-[#7a6f63]">
+                <p className="py-4 text-center text-sm text-[#a3a3a3]">
                   Aucun modèle — cliquez sur « Ajouter un modèle »
                 </p>
               )}
@@ -188,7 +188,7 @@ export function AdminPricingManager() {
                 <tbody>
                   {familyVariants.length === 0 && familyDrafts.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="py-6 text-center text-sm text-[#7a6f63]">
+                      <td colSpan={8} className="py-6 text-center text-sm text-[#a3a3a3]">
                         Aucun modèle — cliquez sur « Ajouter un modèle »
                       </td>
                     </tr>

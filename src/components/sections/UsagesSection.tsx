@@ -19,13 +19,13 @@ export function UsagesSection() {
         <div className="mt-14 grid gap-5 sm:grid-cols-2">
           {usages.map((item) => (
             <div key={item.title} className="value-card">
-              <h3 className="font-serif text-xl text-[#e8e2d3]">
+              <h3 className="font-serif text-xl text-[#171717]">
                 {item.title}
               </h3>
-              <p className="mt-3 text-[0.9375rem] leading-relaxed text-[#a6917c]">
+              <p className="mt-3 text-[0.9375rem] leading-relaxed text-[#a3a3a3]">
                 {item.description}
               </p>
-              <p className="mt-4 text-sm text-[#8a9a78]">{item.suggest}</p>
+              <p className="mt-4 text-sm text-[#525252]">{item.suggest}</p>
             </div>
           ))}
         </div>

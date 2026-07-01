@@ -29,7 +29,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="admin-shell min-h-screen text-[#e8e2d3]">
+    <div className="admin-shell min-h-screen text-[#171717]">
       <button
         type="button"
         className={`admin-sidebar-backdrop${mobileOpen ? " admin-sidebar-backdrop-visible" : ""}`}

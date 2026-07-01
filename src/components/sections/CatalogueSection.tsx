@@ -24,14 +24,14 @@ export async function CatalogueSection({
         <div className="space-y-20">
           {products.map((product) => (
             <article key={product.id}>
-              <h3 className="font-serif text-2xl text-[#e8e2d3] sm:text-3xl">
+              <h3 className="font-serif text-2xl text-[#171717] sm:text-3xl">
                 {product.name}
               </h3>
               <span className="accent-line mt-4" />
 
-              <div className="mt-10 overflow-x-auto rounded-sm border border-[rgba(232,226,211,0.08)]">
+              <div className="mt-10 overflow-x-auto rounded-sm border border-[rgba(0, 0, 0,0.08)]">
                 <table className="catalogue-table w-full min-w-[720px] text-left text-sm">
-                  <thead className="bg-[#252220]">
+                  <thead className="bg-[#f5f5f5]">
                     <tr>
                       <th className="label-caps px-4 py-4 pr-4 font-medium">
                         Modèle
@@ -60,27 +60,27 @@ export async function CatalogueSection({
                     {product.variants.map((variant) => (
                       <tr
                         key={variant.model}
-                        className="border-t border-[rgba(232,226,211,0.06)]"
+                        className="border-t border-[rgba(0, 0, 0,0.06)]"
                       >
-                        <td className="px-4 py-4 font-medium text-[#e8e2d3]">
+                        <td className="px-4 py-4 font-medium text-[#171717]">
                           {variant.model}
                         </td>
-                        <td className="px-4 py-4 text-[#c9bfb0]">
+                        <td className="px-4 py-4 text-[#525252]">
                           {variant.length_cm}
                         </td>
-                        <td className="px-4 py-4 text-[#c9bfb0]">
+                        <td className="px-4 py-4 text-[#525252]">
                           {variant.width_cm}
                         </td>
-                        <td className="px-4 py-4 text-[#c9bfb0]">
+                        <td className="px-4 py-4 text-[#525252]">
                           {variant.height_cm}
                         </td>
-                        <td className="px-4 py-4 text-[#c9bfb0]">
+                        <td className="px-4 py-4 text-[#525252]">
                           {variant.thickness_cm}
                         </td>
-                        <td className="px-4 py-4 text-[#c9bfb0]">
+                        <td className="px-4 py-4 text-[#525252]">
                           {formatWeightKg(variant.weight_kg)} kg
                         </td>
-                        <td className="px-4 py-4 font-medium text-[#e8e2d3]">
+                        <td className="px-4 py-4 font-medium text-[#171717]">
                           {formatPriceDH(variant.price)}
                         </td>
                       </tr>
@@ -92,11 +92,11 @@ export async function CatalogueSection({
           ))}
         </div>
 
-        <div className="mt-16 border border-[rgba(232,226,211,0.12)] bg-[#252220] px-8 py-10 text-center lg:px-14">
-          <p className="font-serif text-xl text-[#e8e2d3]">
+        <div className="mt-16 border border-[rgba(0, 0, 0,0.12)] bg-[#f5f5f5] px-8 py-10 text-center lg:px-14">
+          <p className="font-serif text-xl text-[#171717]">
             Teinté dans la masse
           </p>
-          <p className="mt-2 text-sm text-[#a6917c]">{brand.delivery}</p>
+          <p className="mt-2 text-sm text-[#a3a3a3]">{brand.delivery}</p>
           <Link href={contactHref} className="btn-outline mt-8 inline-block">
             Demander un devis →
           </Link>

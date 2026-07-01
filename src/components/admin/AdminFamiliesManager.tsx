@@ -134,17 +134,17 @@ export function AdminFamiliesManager({
   }
 
   if (loading) {
-    return <p className="text-[#a6917c]">Chargement...</p>;
+    return <p className="text-[#a3a3a3]">Chargement...</p>;
   }
 
   return (
     <div className="space-y-8">
       <form onSubmit={addFamily} className="admin-card space-y-4">
-        <h2 className="font-serif text-xl text-[#e8e2d3]">Ajouter une gamme</h2>
-        <p className="text-sm text-[#a6917c]">
+        <h2 className="font-serif text-xl text-[#171717]">Ajouter une gamme</h2>
+        <p className="text-sm text-[#a3a3a3]">
           Ex. Jardinière Ronde, Bac Modulaire… Elle apparaîtra sur la page
           produits et un nouveau tableau sera créé dans{" "}
-          <Link href="/admin/products" className="text-[#8a9a78] hover:text-[#e8e2d3]">
+          <Link href="/admin/products" className="text-[#171717] hover:text-[#000000]">
             Tarifs
           </Link>
           .
@@ -166,9 +166,9 @@ export function AdminFamiliesManager({
       {message && <p className="admin-message">{message}</p>}
 
       <div className="admin-card">
-        <h2 className="font-serif text-xl text-[#e8e2d3]">Gammes existantes</h2>
+        <h2 className="font-serif text-xl text-[#171717]">Gammes existantes</h2>
         {families.length === 0 ? (
-          <p className="mt-4 text-sm text-[#a6917c]">Aucune gamme pour le moment.</p>
+          <p className="mt-4 text-sm text-[#a3a3a3]">Aucune gamme pour le moment.</p>
         ) : (
           <div className="mt-6 space-y-3">
             {families.map((family) => (
@@ -374,11 +374,11 @@ function FamilyRow({
   }
 
   return (
-    <div className="border border-[rgba(232,226,211,0.08)]">
+    <div className="border border-[rgba(0, 0, 0,0.08)]">
       <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4">
         <div>
-          <p className="font-serif text-lg text-[#e8e2d3]">{family.name}</p>
-          <p className="mt-1 text-xs text-[#7a6f63]">
+          <p className="font-serif text-lg text-[#171717]">{family.name}</p>
+          <p className="mt-1 text-xs text-[#a3a3a3]">
             {modelCount} modèle{modelCount > 1 ? "s" : ""} · {photoCount} photo
             {photoCount > 1 ? "s" : ""} · {family.slug}
           </p>
@@ -422,7 +422,7 @@ function FamilyRow({
       </div>
 
       {editing && (
-        <div className="space-y-6 border-t border-[rgba(232,226,211,0.08)] px-4 py-6">
+        <div className="space-y-6 border-t border-[rgba(0, 0, 0,0.08)] px-4 py-6">
           <div>
             <label className="label-caps mb-2 block">Nom de la gamme</label>
             <div className="flex flex-wrap gap-3">
@@ -443,19 +443,19 @@ function FamilyRow({
           </div>
 
           <div>
-            <h3 className="font-serif text-lg text-[#e8e2d3]">Photos de la gamme</h3>
+            <h3 className="font-serif text-lg text-[#171717]">Photos de la gamme</h3>
             {loadingPhotos ? (
-              <p className="mt-3 text-sm text-[#a6917c]">Chargement...</p>
+              <p className="mt-3 text-sm text-[#a3a3a3]">Chargement...</p>
             ) : photos.length === 0 ? (
-              <p className="mt-3 text-sm text-[#a6917c]">Aucune photo pour cette gamme.</p>
+              <p className="mt-3 text-sm text-[#a3a3a3]">Aucune photo pour cette gamme.</p>
             ) : (
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {photos.map((photo) => (
                   <div
                     key={photo.id}
-                    className="border border-[rgba(232,226,211,0.08)] p-3"
+                    className="border border-[rgba(0, 0, 0,0.08)] p-3"
                   >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-[#252220]">
+                    <div className="relative aspect-[4/3] overflow-hidden bg-[#f5f5f5]">
                       <Image
                         src={photo.image_url}
                         alt={photo.finish}
@@ -471,7 +471,7 @@ function FamilyRow({
                       onChange={(e) => updatePhotoFinish(photo.id, e.target.value)}
                     >
                       {finishes.map((f) => (
-                        <option key={f.id} value={f.name} className="bg-[#252220]">
+                        <option key={f.id} value={f.name} className="bg-[#f5f5f5]">
                           {f.name}
                         </option>
                       ))}
@@ -489,8 +489,8 @@ function FamilyRow({
             )}
           </div>
 
-          <form onSubmit={addPhoto} className="border border-[rgba(232,226,211,0.08)] p-4">
-            <h3 className="font-serif text-lg text-[#e8e2d3]">Ajouter une photo</h3>
+          <form onSubmit={addPhoto} className="border border-[rgba(0, 0, 0,0.08)] p-4">
+            <h3 className="font-serif text-lg text-[#171717]">Ajouter une photo</h3>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="label-caps mb-2 block">Finition</label>
@@ -500,7 +500,7 @@ function FamilyRow({
                   onChange={(e) => setNewFinish(e.target.value)}
                 >
                   {finishes.map((f) => (
-                    <option key={f.id} value={f.name} className="bg-[#252220]">
+                    <option key={f.id} value={f.name} className="bg-[#f5f5f5]">
                       {f.name}
                     </option>
                   ))}
@@ -523,13 +523,13 @@ function FamilyRow({
                   Choisir une photo
                 </button>
                 {selectedFile && (
-                  <p className="mt-2 text-xs text-[#a6917c]">{selectedFile.name}</p>
+                  <p className="mt-2 text-xs text-[#a3a3a3]">{selectedFile.name}</p>
                 )}
               </div>
             </div>
 
             {previewUrl && (
-              <div className="relative mt-4 aspect-[4/3] max-w-xs overflow-hidden border border-[rgba(232,226,211,0.12)] bg-[#252220]">
+              <div className="relative mt-4 aspect-[4/3] max-w-xs overflow-hidden border border-[rgba(0, 0, 0,0.12)] bg-[#f5f5f5]">
                 <Image
                   src={previewUrl}
                   alt="Aperçu"

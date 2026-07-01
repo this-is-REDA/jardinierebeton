@@ -54,13 +54,13 @@ export function AdminContactsManager() {
   }
 
   if (loading) {
-    return <p className="text-[#a6917c]">Chargement...</p>;
+    return <p className="text-[#a3a3a3]">Chargement...</p>;
   }
 
   if (!contacts.length) {
     return (
       <div className="admin-card">
-        <p className="text-[#a6917c]">Aucun message pour le moment.</p>
+        <p className="text-[#a3a3a3]">Aucun message pour le moment.</p>
       </div>
     );
   }
@@ -90,7 +90,7 @@ export function AdminContactsManager() {
               </div>
               <div className="admin-mobile-card-row">
                 <p className="admin-mobile-card-label">Sujet</p>
-                <p className="admin-mobile-card-value text-[#8a9a78]">{subject}</p>
+                <p className="admin-mobile-card-value text-[#171717]">{subject}</p>
               </div>
               <div className="admin-mobile-card-row">
                 <p className="admin-mobile-card-label">Message</p>
@@ -147,14 +147,14 @@ export function AdminContactsManager() {
 
               return (
                 <tr key={contact.id}>
-                  <td className="font-medium text-[#e8e2d3]">{contact.name}</td>
-                  <td className="text-[#a6917c]">{contact.email}</td>
-                  <td className="text-[#a6917c]">{contact.phone ?? "—"}</td>
-                  <td className="text-[#8a9a78]">{subject}</td>
-                  <td className="max-w-xs whitespace-pre-wrap text-[#c9bfb0]">
+                  <td className="font-medium text-[#171717]">{contact.name}</td>
+                  <td className="text-[#a3a3a3]">{contact.email}</td>
+                  <td className="text-[#a3a3a3]">{contact.phone ?? "—"}</td>
+                  <td className="text-[#171717]">{subject}</td>
+                  <td className="max-w-xs whitespace-pre-wrap text-[#525252]">
                     {body}
                   </td>
-                  <td className="whitespace-nowrap text-xs text-[#7a6f63]">
+                  <td className="whitespace-nowrap text-xs text-[#a3a3a3]">
                     {new Date(contact.created_at).toLocaleString("fr-FR")}
                   </td>
                   <td>

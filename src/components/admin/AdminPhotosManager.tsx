@@ -142,12 +142,12 @@ export function AdminPhotosManager({
   }
 
   if (loading) {
-    return <p className="text-[#a6917c]">Chargement...</p>;
+    return <p className="text-[#a3a3a3]">Chargement...</p>;
   }
 
   const addPhotoForm = (
     <form onSubmit={addPhoto} className="admin-card space-y-5">
-      <h2 className="font-serif text-xl text-[#e8e2d3]">Ajouter une photo</h2>
+      <h2 className="font-serif text-xl text-[#171717]">Ajouter une photo</h2>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
@@ -158,7 +158,7 @@ export function AdminPhotosManager({
             onChange={(e) => setFamilyId(e.target.value)}
           >
             {families.map((f) => (
-              <option key={f.id} value={f.id} className="bg-[#252220]">
+              <option key={f.id} value={f.id} className="bg-[#f5f5f5]">
                 {f.name}
               </option>
             ))}
@@ -173,7 +173,7 @@ export function AdminPhotosManager({
             required
           >
             {finishes.map((f) => (
-              <option key={f.id} value={f.name} className="bg-[#252220]">
+              <option key={f.id} value={f.name} className="bg-[#f5f5f5]">
                 {f.name}
               </option>
             ))}
@@ -201,7 +201,7 @@ export function AdminPhotosManager({
           </button>
           {selectedFile && (
             <>
-              <span className="text-sm text-[#a6917c]">{selectedFile.name}</span>
+              <span className="text-sm text-[#a3a3a3]">{selectedFile.name}</span>
               <button
                 type="button"
                 onClick={clearSelectedFile}
@@ -215,7 +215,7 @@ export function AdminPhotosManager({
       </div>
 
       {previewUrl && (
-        <div className="relative aspect-[4/3] max-w-sm overflow-hidden border border-[rgba(232,226,211,0.12)] bg-[#252220]">
+        <div className="relative aspect-[4/3] max-w-sm overflow-hidden border border-[rgba(0, 0, 0,0.12)] bg-[#f5f5f5]">
           <Image
             src={previewUrl}
             alt="Aperçu"
@@ -241,16 +241,16 @@ export function AdminPhotosManager({
 
   const photosList = (
     <div className="admin-card">
-      <h2 className="font-serif text-xl text-[#e8e2d3]">Photos actuelles</h2>
+      <h2 className="font-serif text-xl text-[#171717]">Photos actuelles</h2>
       {photos.length === 0 ? (
-        <p className="mt-4 text-sm text-[#a6917c]">Aucune photo pour le moment.</p>
+        <p className="mt-4 text-sm text-[#a3a3a3]">Aucune photo pour le moment.</p>
       ) : (
         <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {photos.map((photo) => {
             const family = families.find((f) => f.id === photo.family_id);
             return (
-              <div key={photo.id} className="border border-[rgba(232,226,211,0.08)] p-4">
-                <div className="relative aspect-[4/3] overflow-hidden bg-[#252220]">
+              <div key={photo.id} className="border border-[rgba(0, 0, 0,0.08)] p-4">
+                <div className="relative aspect-[4/3] overflow-hidden bg-[#f5f5f5]">
                   <Image
                     src={photo.image_url}
                     alt={photo.finish}
@@ -259,8 +259,8 @@ export function AdminPhotosManager({
                     sizes="300px"
                   />
                 </div>
-                <p className="mt-3 font-serif text-[#e8e2d3]">{family?.name}</p>
-                <p className="text-sm text-[#8a9a78]">{photo.finish}</p>
+                <p className="mt-3 font-serif text-[#171717]">{family?.name}</p>
+                <p className="text-sm text-[#171717]">{photo.finish}</p>
                 <button
                   type="button"
                   onClick={() => deletePhoto(photo.id)}

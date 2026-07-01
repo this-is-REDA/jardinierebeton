@@ -55,7 +55,7 @@ export function AdminSettingsManager() {
   }
 
   if (loading) {
-    return <p className="text-[#a6917c]">Chargement...</p>;
+    return <p className="text-[#a3a3a3]">Chargement...</p>;
   }
 
   return (

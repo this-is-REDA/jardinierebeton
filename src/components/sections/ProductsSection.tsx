@@ -68,11 +68,11 @@ export async function ProductsSection({
 
               return (
                 <div key={product.id}>
-                  <h2 className="font-serif text-2xl text-[#e8e2d3] sm:text-3xl">
+                  <h2 className="font-serif text-2xl text-[#171717] sm:text-3xl">
                     {product.name}
                   </h2>
                   {product.variants.length > 0 && (
-                    <p className="mt-4 text-[0.9375rem] leading-relaxed text-[#a6917c]">
+                    <p className="mt-4 text-[0.9375rem] leading-relaxed text-[#a3a3a3]">
                       {product.variants.map((v) => v.model).join(" · ")}
                     </p>
                   )}
@@ -98,22 +98,22 @@ export async function ProductsSection({
                               sizes="(max-width: 768px) 100vw, 33vw"
                             />
                           </div>
-                          <p className="mt-5 font-serif text-lg text-[#e8e2d3]">
+                          <p className="mt-5 font-serif text-lg text-[#171717]">
                             {photo.name}
                           </p>
-                          <p className="mt-1 text-sm tracking-wide text-[#8a9a78]">
+                          <p className="mt-1 text-sm tracking-wide text-[#525252]">
                             {photo.finish}
                           </p>
                         </article>
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-6 text-sm italic text-[#7a6f63]">
+                    <p className="mt-6 text-sm italic text-[#a3a3a3]">
                       Photos à venir — ajoutez-les depuis l&apos;admin.
                     </p>
                   )}
 
-                  <p className="mt-8 text-sm italic text-[#7a6f63]">
+                  <p className="mt-8 text-sm italic text-[#a3a3a3]">
                     Teintée dans la masse — six finitions disponibles
                   </p>
                 </div>
@@ -121,7 +121,7 @@ export async function ProductsSection({
             })}
           </div>
 
-          <div className="mt-20 border-t border-[rgba(232,226,211,0.08)] pt-10">
+          <div className="mt-20 border-t border-[rgba(0, 0, 0,0.08)] pt-10">
             <Link href={catalogueHref} className="link-arrow">
               Consulter le catalogue tarifaire →
             </Link>
