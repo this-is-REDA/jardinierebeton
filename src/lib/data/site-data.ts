@@ -25,6 +25,7 @@ export interface ProductPhoto {
   finish: string;
   image: string;
   familySlug: string;
+  appearance?: import("@/lib/photo-appearance").PhotoAppearance;
 }
 
 export const brand = {

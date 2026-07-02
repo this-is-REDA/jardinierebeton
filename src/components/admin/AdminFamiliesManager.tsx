@@ -4,6 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { PhotoAppearanceEditor } from "@/components/admin/PhotoAppearanceEditor";
+import {
+  defaultPhotoAppearance,
+  photoAppearanceClassName,
+  photoAppearanceStyle,
+  type PhotoAppearance,
+} from "@/lib/photo-appearance";
+import {
+  getAppearanceForPhoto,
+  loadPhotoAppearancesMap,
+  savePhotoAppearanceForFinish,
+} from "@/lib/photo-appearance-store";
 import { finishes as staticFinishes } from "@/lib/data/site-data";
 import type { ProductFamily, ProductPhotoRow, FinishRow } from "@/types/database";
 
@@ -218,7 +230,16 @@ function FamilyRow({
   const [newFinish, setNewFinish] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [newAppearance, setNewAppearance] = useState<PhotoAppearance>(defaultPhotoAppearance);
+  const [appearanceMap, setAppearanceMap] = useState<Record<string, PhotoAppearance>>({});
+  const [editingAppearanceId, setEditingAppearanceId] = useState<string | null>(null);
+  const [appearanceDraft, setAppearanceDraft] = useState<PhotoAppearance>(defaultPhotoAppearance);
+  const [savingAppearance, setSavingAppearance] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  const previewAspectClass = family.slug.includes("carree")
+    ? "aspect-square"
+    : "aspect-[4/3]";
 
   useEffect(() => {
     if (!editing) setName(family.name);
@@ -233,13 +254,14 @@ function FamilyRow({
   async function loadFamilyData() {
     setLoadingPhotos(true);
     const supabase = createSupabaseBrowserClient();
-    const [{ data: p }, { data: fin }] = await Promise.all([
+    const [{ data: p }, { data: fin }, appearances] = await Promise.all([
       supabase
         .from("product_photos")
         .select("*")
         .eq("family_id", family.id)
         .order("sort_order"),
       supabase.from("finishes").select("*").order("sort_order"),
+      loadPhotoAppearancesMap(supabase),
     ]);
 
     const finishList =
@@ -253,6 +275,7 @@ function FamilyRow({
           }));
 
     setPhotos(p ?? []);
+    setAppearanceMap(appearances);
     setFinishes(finishList);
     if (finishList.length && !newFinish) {
       setNewFinish(finishList[0].name);
@@ -270,6 +293,9 @@ function FamilyRow({
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setSelectedFile(null);
     setPreviewUrl(null);
+    setNewAppearance(defaultPhotoAppearance);
+    setEditingAppearanceId(null);
+    setAppearanceDraft(defaultPhotoAppearance);
     setPanelMessage("");
     setEditing(false);
     setName(family.name);
@@ -321,7 +347,39 @@ function FamilyRow({
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
+    setNewAppearance(defaultPhotoAppearance);
     setPanelMessage("");
+  }
+
+  async function savePhotoAppearance(photoId: string) {
+    const photo = photos.find((item) => item.id === photoId);
+    if (!photo) return;
+
+    setSavingAppearance(true);
+    setPanelMessage("");
+
+    const supabase = createSupabaseBrowserClient();
+    const result = await savePhotoAppearanceForFinish(
+      supabase,
+      family.id,
+      photo.finish,
+      appearanceDraft
+    );
+
+    setSavingAppearance(false);
+
+    if (result.error) {
+      setPanelMessage(result.error);
+      return;
+    }
+
+    setAppearanceMap((current) => ({
+      ...current,
+      [`${family.id}:${photo.finish}`]: appearanceDraft,
+    }));
+    setEditingAppearanceId(null);
+    await onChanged();
+    setPanelMessage("Apparence enregistrée.");
   }
 
   async function addPhoto(e: React.FormEvent) {
@@ -336,12 +394,30 @@ function FamilyRow({
 
     try {
       const supabase = createSupabaseBrowserClient();
+
+      const { data: existingPhotos } = await supabase
+        .from("product_photos")
+        .select("id, image_url")
+        .eq("family_id", family.id)
+        .eq("finish", newFinish);
+
+      if (existingPhotos?.length) {
+        await supabase
+          .from("product_photos")
+          .delete()
+          .eq("family_id", family.id)
+          .eq("finish", newFinish);
+      }
+
       const ext = selectedFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
       const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from("product-images")
-        .upload(path, selectedFile, { upsert: false });
+        .upload(path, selectedFile, {
+          upsert: false,
+          contentType: selectedFile.type || `image/${ext === "jpg" ? "jpeg" : ext}`,
+        });
 
       if (uploadError) throw uploadError;
 
@@ -358,14 +434,33 @@ function FamilyRow({
 
       if (insertError) throw insertError;
 
+      const appearanceResult = await savePhotoAppearanceForFinish(
+        supabase,
+        family.id,
+        newFinish,
+        newAppearance
+      );
+
+      if (appearanceResult.error) {
+        setPanelMessage(
+          `Photo ajoutée, mais l'apparence n'a pas pu être enregistrée : ${appearanceResult.error}`
+        );
+      } else {
+        setAppearanceMap((current) => ({
+          ...current,
+          [`${family.id}:${newFinish}`]: newAppearance,
+        }));
+        setPanelMessage("Photo ajoutée.");
+      }
+
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setSelectedFile(null);
       setPreviewUrl(null);
+      setNewAppearance(defaultPhotoAppearance);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
       await loadFamilyData();
       await onChanged();
-      setPanelMessage("Photo ajoutée.");
     } catch (err) {
       setPanelMessage(err instanceof Error ? err.message : "Erreur lors de l'ajout.");
     } finally {
@@ -450,18 +545,29 @@ function FamilyRow({
               <p className="mt-3 text-sm text-[#a3a3a3]">Aucune photo pour cette gamme.</p>
             ) : (
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {photos.map((photo) => (
+                {photos.map((photo) => {
+                  const appearance = getAppearanceForPhoto(
+                    family.id,
+                    photo.finish,
+                    photo.appearance,
+                    appearanceMap
+                  );
+                  const isEditingAppearance = editingAppearanceId === photo.id;
+
+                  return (
                   <div
                     key={photo.id}
                     className="border border-[rgba(0, 0, 0,0.08)] p-3"
                   >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-[#f5f5f5]">
+                    <div className={`relative overflow-hidden bg-[#f5f5f5] ${previewAspectClass}`}>
                       <Image
                         src={photo.image_url}
                         alt={photo.finish}
                         fill
-                        className="object-cover"
+                        className={photoAppearanceClassName(appearance.fit)}
+                        style={photoAppearanceStyle(appearance)}
                         sizes="240px"
+                        unoptimized={photo.image_url.includes("supabase.co")}
                       />
                     </div>
                     <label className="label-caps mb-1 mt-3 block">Finition</label>
@@ -476,6 +582,47 @@ function FamilyRow({
                         </option>
                       ))}
                     </select>
+
+                    {isEditingAppearance ? (
+                      <div className="mt-4 border-t border-[rgba(0,0,0,0.08)] pt-4">
+                        <PhotoAppearanceEditor
+                          imageUrl={photo.image_url}
+                          alt={photo.finish}
+                          appearance={appearanceDraft}
+                          onChange={setAppearanceDraft}
+                          aspectClass={previewAspectClass}
+                        />
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => savePhotoAppearance(photo.id)}
+                            disabled={savingAppearance}
+                            className="admin-btn admin-btn-primary admin-btn-sm"
+                          >
+                            {savingAppearance ? "..." : "Enregistrer l'apparence"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingAppearanceId(null)}
+                            className="admin-btn admin-btn-secondary admin-btn-sm"
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingAppearanceId(photo.id);
+                          setAppearanceDraft(appearance);
+                        }}
+                        className="admin-btn admin-btn-secondary admin-btn-sm mt-3 w-full"
+                      >
+                        Modifier l&apos;apparence
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => deletePhoto(photo.id)}
@@ -484,7 +631,8 @@ function FamilyRow({
                       Supprimer
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -529,16 +677,14 @@ function FamilyRow({
             </div>
 
             {previewUrl && (
-              <div className="relative mt-4 aspect-[4/3] max-w-xs overflow-hidden border border-[rgba(0, 0, 0,0.12)] bg-[#f5f5f5]">
-                <Image
-                  src={previewUrl}
-                  alt="Aperçu"
-                  fill
-                  className="object-cover"
-                  sizes="320px"
-                  unoptimized
-                />
-              </div>
+              <PhotoAppearanceEditor
+                imageUrl={previewUrl}
+                alt="Aperçu"
+                appearance={newAppearance}
+                onChange={setNewAppearance}
+                aspectClass={previewAspectClass}
+                previewLabel="Aperçu — réglages appliqués sur le site"
+              />
             )}
 
             <button

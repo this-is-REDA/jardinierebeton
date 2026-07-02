@@ -68,6 +68,7 @@ export interface Database {
           finish: string;
           image_url: string;
           sort_order: number;
+          appearance: import("@/lib/photo-appearance").PhotoAppearance | null;
           created_at: string;
           updated_at: string;
         };
@@ -77,6 +78,7 @@ export interface Database {
           finish: string;
           image_url: string;
           sort_order?: number;
+          appearance?: import("@/lib/photo-appearance").PhotoAppearance | null;
           created_at?: string;
           updated_at?: string;
         };

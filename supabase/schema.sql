@@ -34,6 +34,12 @@ CREATE TABLE IF NOT EXISTS product_photos (
   finish TEXT NOT NULL,
   image_url TEXT NOT NULL,
   sort_order INT NOT NULL DEFAULT 0,
+  appearance JSONB NOT NULL DEFAULT '{
+    "fit": "contain",
+    "scale": 100,
+    "positionX": 50,
+    "positionY": 50
+  }'::jsonb,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );

@@ -6,6 +6,11 @@ import {
   brand as staticBrand,
 } from "@/lib/data/site-data";
 import type { SiteProduct, ProductPhoto, Finish } from "@/lib/data/site-data";
+import {
+  PHOTO_APPEARANCES_SETTINGS_KEY,
+  parsePhotoAppearancesMap,
+  getAppearanceForPhoto,
+} from "@/lib/photo-appearance-store";
 
 export async function getCatalogProducts(): Promise<SiteProduct[]> {
   const supabase = await createSupabaseServerClient();
@@ -57,10 +62,17 @@ export async function getProductPhotos(): Promise<ProductPhoto[]> {
     return staticPhotos;
   }
 
-  const { data: photos, error: photosError } = await supabase
-    .from("product_photos")
-    .select("*")
-    .order("sort_order");
+  const [{ data: photos, error: photosError }, { data: appearanceSettings }] =
+    await Promise.all([
+      supabase.from("product_photos").select("*").order("sort_order"),
+      supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", PHOTO_APPEARANCES_SETTINGS_KEY)
+        .maybeSingle(),
+    ]);
+
+  const appearanceMap = parsePhotoAppearancesMap(appearanceSettings?.value);
 
   if (photosError || !photos?.length) {
     return staticPhotos;
@@ -74,15 +86,40 @@ export async function getProductPhotos(): Promise<ProductPhoto[]> {
     (families ?? []).map((f) => [f.id, { name: f.name, slug: f.slug }])
   );
 
-  return photos.map((row) => {
+  const mapped = photos.map((row) => {
     const family = familyMap.get(row.family_id);
     return {
       name: family?.name ?? "Jardinière",
       finish: row.finish,
       image: row.image_url,
       familySlug: family?.slug ?? "jardiniere-rectangle",
+      appearance: getAppearanceForPhoto(
+        row.family_id,
+        row.finish,
+        row.appearance,
+        appearanceMap
+      ),
     };
   });
+
+  const byKey = new Map<string, ProductPhoto>();
+  for (const photo of mapped) {
+    const key = `${photo.familySlug}:${photo.finish}`;
+    const existing = byKey.get(key);
+    const isUploaded = photo.image.includes("supabase.co/storage/");
+
+    if (!existing) {
+      byKey.set(key, photo);
+      continue;
+    }
+
+    const existingIsUploaded = existing.image.includes("supabase.co/storage/");
+    if (isUploaded && !existingIsUploaded) {
+      byKey.set(key, photo);
+    }
+  }
+
+  return Array.from(byKey.values());
 }
 
 export async function getFinishes(): Promise<Finish[]> {

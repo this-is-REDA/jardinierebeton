@@ -2,6 +2,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { brand } from "@/lib/data/site-data";
 import { getCatalogProducts, getProductPhotos } from "@/lib/data/catalog";
+import {
+  defaultPhotoAppearance,
+  photoAppearanceClassName,
+  photoAppearanceStyle,
+} from "@/lib/photo-appearance";
 
 export async function ProductsSection({
   catalogueHref = "#catalogue",
@@ -83,10 +88,13 @@ export async function ProductsSection({
                         isSquare ? "lg:max-w-lg" : "lg:grid-cols-3"
                       }`}
                     >
-                      {photos.map((photo) => (
+                      {photos.map((photo) => {
+                        const appearance = photo.appearance ?? defaultPhotoAppearance;
+
+                        return (
                         <article key={`${photo.finish}-${photo.image}`} className="group">
                           <div
-                            className={`product-card-image relative ${
+                            className={`product-card-image relative overflow-hidden ${
                               isSquare ? "aspect-square" : "aspect-[4/3]"
                             }`}
                           >
@@ -94,8 +102,10 @@ export async function ProductsSection({
                               src={photo.image}
                               alt={`${photo.name} — ${photo.finish}`}
                               fill
-                              className="object-cover transition duration-700 group-hover:scale-[1.03]"
+                              className={`transition duration-700 group-hover:scale-[1.02] ${photoAppearanceClassName(appearance.fit)}`}
+                              style={photoAppearanceStyle(appearance)}
                               sizes="(max-width: 768px) 100vw, 33vw"
+                              unoptimized={photo.image.includes("supabase.co")}
                             />
                           </div>
                           <p className="mt-5 font-serif text-lg text-[#171717]">
@@ -105,7 +115,8 @@ export async function ProductsSection({
                             {photo.finish}
                           </p>
                         </article>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="mt-6 text-sm italic text-[#a3a3a3]">
