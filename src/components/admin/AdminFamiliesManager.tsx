@@ -65,7 +65,36 @@ export function AdminFamiliesManager({
   }
 
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+
+    void (async () => {
+      const supabase = createSupabaseBrowserClient();
+      const [{ data: f }, { data: v }, { data: p }] = await Promise.all([
+        supabase.from("product_families").select("*").order("sort_order"),
+        supabase.from("product_variants").select("family_id"),
+        supabase.from("product_photos").select("family_id"),
+      ]);
+      if (cancelled) return;
+      setFamilies(f ?? []);
+
+      const vCounts: Record<string, number> = {};
+      (v ?? []).forEach((row) => {
+        vCounts[row.family_id] = (vCounts[row.family_id] ?? 0) + 1;
+      });
+      setVariantCounts(vCounts);
+
+      const pCounts: Record<string, number> = {};
+      (p ?? []).forEach((row) => {
+        pCounts[row.family_id] = (pCounts[row.family_id] ?? 0) + 1;
+      });
+      setPhotoCounts(pCounts);
+
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function notifyChange() {
@@ -242,10 +271,6 @@ function FamilyRow({
     : "aspect-[4/3]";
 
   useEffect(() => {
-    if (!editing) setName(family.name);
-  }, [family.name, editing]);
-
-  useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
@@ -284,6 +309,7 @@ function FamilyRow({
   }
 
   async function openEdit() {
+    setName(family.name);
     setEditing(true);
     setPanelMessage("");
     await loadFamilyData();

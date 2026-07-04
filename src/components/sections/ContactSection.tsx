@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, CheckCircle } from "lucide-react";
 import { brand, contactSubjects } from "@/lib/data/site-data";
 import { createSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function ContactSection() {
+  const searchParams = useSearchParams();
+  const devis = searchParams.get("devis");
+  const messageRef = useRef<HTMLTextAreaElement>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+
+  useEffect(() => {
+    if (!devis || !messageRef.current || messageRef.current.value) return;
+    messageRef.current.value = `Je souhaite un devis pour le modèle : ${devis}.`;
+  }, [devis]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -137,6 +146,7 @@ export function ContactSection() {
                 name="message"
                 required
                 rows={6}
+                ref={messageRef}
                 placeholder="Modèle, finition, quantité, ville de livraison…"
                 className="input-field resize-none"
               />

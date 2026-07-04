@@ -43,7 +43,22 @@ export function AdminContactsManager() {
   }
 
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+
+    void (async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data } = await supabase
+        .from("contact_requests")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (cancelled) return;
+      setContacts(data ?? []);
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function deleteContact(id: string) {

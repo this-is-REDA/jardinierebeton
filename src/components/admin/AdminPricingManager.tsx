@@ -41,7 +41,24 @@ export function AdminPricingManager() {
   }
 
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+
+    void (async () => {
+      const supabase = createSupabaseBrowserClient();
+      const [{ data: f }, { data: v }] = await Promise.all([
+        supabase.from("product_families").select("*").order("sort_order"),
+        supabase.from("product_variants").select("*").order("sort_order"),
+      ]);
+      if (cancelled) return;
+      setFamilies(f ?? []);
+      setVariants(v ?? []);
+      setDraftVariants([]);
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function saveVariant(variant: VariantForm) {

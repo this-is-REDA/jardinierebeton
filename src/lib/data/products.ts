@@ -1,4 +1,3 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { products as staticProducts } from "@/lib/data/site-data";
 import type { SiteProduct } from "@/lib/data/site-data";
 

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { HeroSection } from "@/components/sections/HeroSection";
 import { UsagesSection } from "@/components/sections/UsagesSection";
 import { ValuesSection } from "@/components/sections/ValuesSection";
@@ -13,7 +14,9 @@ export default function HomePage() {
       <ValuesSection />
       <ProductsSection />
       <CatalogueSection />
-      <ContactSection />
+      <Suspense fallback={null}>
+        <ContactSection />
+      </Suspense>
     </>
   );
 }

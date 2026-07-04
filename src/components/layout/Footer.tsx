@@ -30,7 +30,7 @@ export async function Footer() {
             </li>
             {products.map((p) => (
               <li key={p.id}>
-                <Link href="/catalogue" className="transition hover:text-[#000000]">
+                <Link href={`/produits/${p.slug}`} className="transition hover:text-[#000000]">
                   {p.name}
                 </Link>
               </li>

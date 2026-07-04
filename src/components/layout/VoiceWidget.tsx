@@ -15,7 +15,7 @@ const VOICE_LANGUAGES_JSON = JSON.stringify(VOICE_LANGUAGES);
 export function VoiceWidget() {
   return (
     <>
-      <Script id="qubot-voice-languages" strategy="beforeInteractive">
+      <Script id="qubot-voice-languages" strategy="afterInteractive">
         {`(function(){
   var languages = ${VOICE_LANGUAGES_JSON};
   var originalFetch = window.fetch;

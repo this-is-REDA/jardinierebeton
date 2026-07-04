@@ -1,12 +1,19 @@
 import Link from "next/link";
 import Image from "next/image";
+import { ArrowRight } from "lucide-react";
 import { brand } from "@/lib/data/site-data";
-import { getCatalogProducts, getProductPhotos } from "@/lib/data/catalog";
+import {
+  getCatalogProducts,
+  getProductPhotos,
+  getFinishes,
+} from "@/lib/data/catalog";
+import { buildFamilyCatalogItems } from "@/lib/data/catalog-items";
 import {
   defaultPhotoAppearance,
   photoAppearanceClassName,
   photoAppearanceStyle,
 } from "@/lib/photo-appearance";
+import { formatPriceDH } from "@/lib/utils";
 
 export async function ProductsSection({
   catalogueHref = "#catalogue",
@@ -15,10 +22,13 @@ export async function ProductsSection({
   catalogueHref?: string;
   showVideoBanner?: boolean;
 }) {
-  const [products, productPhotos] = await Promise.all([
+  const [products, productPhotos, finishes] = await Promise.all([
     getCatalogProducts(),
     getProductPhotos(),
+    getFinishes(),
   ]);
+
+  const families = buildFamilyCatalogItems(products, productPhotos);
 
   return (
     <section
@@ -64,75 +74,113 @@ export async function ProductsSection({
             </div>
           )}
 
-          <div className="mt-20 space-y-24">
-            {products.map((product) => {
-              const photos = productPhotos.filter(
-                (p) => p.familySlug === product.slug
-              );
-              const isSquare = product.slug.includes("carree");
-
-              return (
-                <div key={product.id}>
-                  <h2 className="font-serif text-2xl text-[#171717] sm:text-3xl">
-                    {product.name}
-                  </h2>
-                  {product.variants.length > 0 && (
-                    <p className="mt-4 text-[0.9375rem] leading-relaxed text-[#a3a3a3]">
-                      {product.variants.map((v) => v.model).join(" · ")}
+          <div className="mt-20 space-y-28">
+            {families.map((family) => (
+              <article
+                key={family.id}
+                className="home-family-block border-t border-[rgba(0,0,0,0.08)] pt-12 first:border-t-0 first:pt-0"
+              >
+                <div className="home-family-header">
+                  <div className="max-w-xl">
+                    <p className="label-caps">Gamme</p>
+                    <h3 className="mt-3 font-serif text-2xl text-[#171717] sm:text-3xl">
+                      {family.name}
+                    </h3>
+                    {family.variants.length > 0 && (
+                      <p className="mt-4 text-sm leading-relaxed text-[#737373]">
+                        {family.variants.map((variant) => variant.model).join(" · ")}
+                      </p>
+                    )}
+                    <p className="mt-4 text-sm font-medium text-[#171717]">
+                      À partir de {formatPriceDH(family.minPrice)} H.T
                     </p>
-                  )}
+                  </div>
 
-                  {photos.length > 0 ? (
-                    <div
-                      className={`mt-10 grid gap-8 sm:grid-cols-2 ${
-                        isSquare ? "lg:max-w-lg" : "lg:grid-cols-3"
-                      }`}
-                    >
-                      {photos.map((photo) => {
-                        const appearance = photo.appearance ?? defaultPhotoAppearance;
+                  <Link
+                    href={`/produits/${family.slug}`}
+                    className="btn-outline mt-6 shrink-0 self-start lg:mt-0"
+                  >
+                    Voir le produit
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
 
-                        return (
-                        <article key={`${photo.finish}-${photo.image}`} className="group">
+                {family.photos.length > 0 ? (
+                  <div
+                    className={`home-family-gallery mt-10 ${
+                      family.isSquare
+                        ? "home-family-gallery-square"
+                        : "home-family-gallery-rectangle"
+                    }`}
+                  >
+                    {family.photos.map((photo) => {
+                      const appearance =
+                        photo.appearance ?? defaultPhotoAppearance;
+                      const finish = finishes.find(
+                        (item) => item.name === photo.finish
+                      );
+
+                      return (
+                        <figure
+                          key={`${photo.finish}-${photo.image}`}
+                          className="home-family-photo group"
+                        >
                           <div
                             className={`product-card-image relative overflow-hidden ${
-                              isSquare ? "aspect-square" : "aspect-[4/3]"
+                              family.isSquare ? "aspect-square" : "aspect-[4/3]"
                             }`}
                           >
                             <Image
                               src={photo.image}
-                              alt={`${photo.name} — ${photo.finish}`}
+                              alt={`${family.name} — ${photo.finish}`}
                               fill
                               className={`transition duration-700 group-hover:scale-[1.02] ${photoAppearanceClassName(appearance.fit)}`}
                               style={photoAppearanceStyle(appearance)}
-                              sizes="(max-width: 768px) 100vw, 33vw"
+                              sizes="(max-width: 768px) 50vw, 25vw"
                               unoptimized={photo.image.includes("supabase.co")}
                             />
                           </div>
-                          <p className="mt-5 font-serif text-lg text-[#171717]">
-                            {photo.name}
-                          </p>
-                          <p className="mt-1 text-sm tracking-wide text-[#525252]">
-                            {photo.finish}
-                          </p>
-                        </article>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="mt-6 text-sm italic text-[#a3a3a3]">
-                      Photos à venir — ajoutez-les depuis l&apos;admin.
-                    </p>
-                  )}
-
+                          <figcaption className="mt-4 flex items-center gap-2">
+                            {finish && (
+                              <span
+                                className="h-3.5 w-3.5 rounded-full border border-[rgba(0,0,0,0.1)]"
+                                style={{ backgroundColor: finish.hex }}
+                              />
+                            )}
+                            <span className="text-sm text-[#525252]">
+                              {photo.finish}
+                            </span>
+                          </figcaption>
+                        </figure>
+                      );
+                    })}
+                  </div>
+                ) : (
                   <p className="mt-8 text-sm italic text-[#a3a3a3]">
-                    Teintée dans la masse — six finitions disponibles
+                    Photos à venir — ajoutez-les depuis l&apos;admin.
                   </p>
+                )}
+
+                <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[rgba(0,0,0,0.06)] pt-6">
+                  <p className="text-sm text-[#a3a3a3]">
+                    Teintée dans la masse — {finishes.length} finitions
+                    disponibles
+                  </p>
+                  <Link
+                    href={`/produits/${family.slug}`}
+                    className="link-arrow"
+                  >
+                    Découvrir {family.name.toLowerCase()} →
+                  </Link>
                 </div>
-              );
-            })}
+              </article>
+            ))}
           </div>
 
-          <div className="mt-20 border-t border-[rgba(0, 0, 0,0.08)] pt-10">
+          <div className="mt-20 flex flex-col gap-4 border-t border-[rgba(0,0,0,0.08)] pt-10 sm:flex-row sm:items-center sm:justify-between">
+            <Link href="/produits" className="link-arrow">
+              Voir tous les produits →
+            </Link>
             <Link href={catalogueHref} className="link-arrow">
               Consulter le catalogue tarifaire →
             </Link>

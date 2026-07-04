@@ -52,7 +52,40 @@ export function AdminPhotosManager({
   }
 
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+
+    void (async () => {
+      const supabase = createSupabaseBrowserClient();
+      const [{ data: f }, { data: p }, { data: fin }] = await Promise.all([
+        supabase.from("product_families").select("*").order("sort_order"),
+        supabase.from("product_photos").select("*").order("sort_order"),
+        supabase.from("finishes").select("*").order("sort_order"),
+      ]);
+      if (cancelled) return;
+      setFamilies(f ?? []);
+      setPhotos(p ?? []);
+      const finishList =
+        fin?.length
+          ? fin
+          : staticFinishes.map((item, index) => ({
+              id: item.name,
+              name: item.name,
+              hex: item.hex,
+              sort_order: index + 1,
+            }));
+      setFinishes(finishList);
+      if (f?.length && !familyId) {
+        setFamilyId(f[0].id);
+      }
+      if (finishList.length && !finish) {
+        setFinish(finishList[0].name);
+      }
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
