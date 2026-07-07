@@ -1,10 +1,21 @@
+import Image from "next/image";
 import Link from "next/link";
 import { brand } from "@/lib/data/site-data";
 
 export function HeroSection() {
   return (
-    <section className="grid min-h-[calc(100vh-73px)] lg:grid-cols-2">
-      <div className="relative z-10 flex flex-col justify-center px-6 py-16 lg:px-16 xl:px-24">
+    <section className="relative min-h-[calc(100vh-73px)]">
+      <Image
+        src={brand.heroImage}
+        alt="Jardinières en béton allégé en situation"
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover object-center"
+      />
+      <div className="hero-video-overlay pointer-events-none absolute inset-0" />
+
+      <div className="relative z-10 flex min-h-[calc(100vh-73px)] flex-col justify-center px-6 py-16 lg:px-16 xl:px-24">
         <span className="accent-line" />
         <p className="label-caps mt-6">{brand.subtitle}</p>
         <h1 className="mt-5 font-serif text-[2.75rem] leading-[1.08] tracking-tight text-[#171717] sm:text-5xl xl:text-[3.5rem]">
@@ -36,20 +47,6 @@ export function HeroSection() {
             Voir les tarifs
           </Link>
         </div>
-      </div>
-
-      <div className="relative min-h-[320px] bg-[#ffffff] sm:min-h-[400px] lg:min-h-full">
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 h-full w-full object-cover"
-          aria-label="Jardinières en béton allégé en situation"
-        >
-          <source src={brand.heroVideo} type="video/mp4" />
-        </video>
-        <div className="hero-video-overlay pointer-events-none absolute inset-0" />
       </div>
     </section>
   );

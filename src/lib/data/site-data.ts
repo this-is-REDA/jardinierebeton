@@ -31,7 +31,7 @@ export interface ProductPhoto {
 export const brand = {
   logo: "/images/logo.png",
   adminLogo: "/images/logo-admin.png",
-  heroVideo: "/videos/hero.mp4",
+  heroImage: "/images/hero.jpg",
   collectionVideo: "/videos/collection.mp4",
   name: "Jardinière Béton",
   tagline: "Indoor & Outdoor · Fabriqué au Maroc",
