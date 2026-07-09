@@ -2,16 +2,23 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { brand, navLinks } from "@/lib/data/site-data";
 
 export function Header() {
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   return (
     <header className="sticky top-0 z-50 border-b border-[rgba(0, 0, 0,0.08)] bg-[#ffffff]/90 backdrop-blur-lg">
-      <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4 lg:px-10">
+      <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 py-3 sm:px-6 sm:py-4 md:px-8 lg:px-10">
         <Link href="/" className="group flex items-center">
           <Image
             src={brand.logo}
@@ -19,12 +26,12 @@ export function Header() {
             width={140}
             height={180}
             unoptimized
-            className="h-14 w-auto object-contain transition group-hover:opacity-90 sm:h-16"
+            className="h-12 w-auto object-contain transition group-hover:opacity-90 sm:h-14 md:h-16"
             priority
           />
         </Link>
 
-        <nav className="hidden items-center gap-9 lg:flex">
+        <nav className="hidden items-center gap-6 md:flex lg:gap-9">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -38,16 +45,17 @@ export function Header() {
 
         <button
           type="button"
-          className="text-[#171717] lg:hidden"
+          className="text-[#171717] md:hidden"
           onClick={() => setOpen(!open)}
           aria-label="Menu"
+          aria-expanded={open}
         >
           {open ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 
       {open && (
-        <nav className="border-t border-[rgba(0, 0, 0,0.08)] px-6 py-6 lg:hidden">
+        <nav className="border-t border-[rgba(0, 0, 0,0.08)] px-4 py-6 sm:px-6 md:hidden">
           <div className="flex flex-col gap-5">
             {navLinks.map((link) => (
               <Link

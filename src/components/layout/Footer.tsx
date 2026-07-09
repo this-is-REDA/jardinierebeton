@@ -10,7 +10,7 @@ export async function Footer() {
 
   return (
     <footer className="border-t border-[rgba(0, 0, 0,0.08)] bg-[#ffffff]">
-      <div className="mx-auto grid max-w-[1400px] gap-12 px-6 py-16 lg:grid-cols-3 lg:px-10">
+      <div className="mx-auto grid max-w-[1400px] gap-10 px-4 py-12 sm:gap-12 sm:px-6 sm:py-16 md:grid-cols-2 lg:grid-cols-3 lg:px-10">
         <div>
           <p className="text-[0.65rem] font-semibold tracking-[0.28em] text-[#171717] uppercase">
             {brand.name}
@@ -43,7 +43,7 @@ export async function Footer() {
           </ul>
         </div>
 
-        <div>
+        <div className="md:col-span-2 lg:col-span-1">
           <p className="label-caps mb-5">Contact</p>
           <ul className="space-y-3 text-sm text-[#525252]">
             <li>{brand.city}</li>
@@ -61,9 +61,18 @@ export async function Footer() {
       </div>
 
       <div className="border-t border-[rgba(0, 0, 0,0.08)]">
-        <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-3 px-6 py-6 text-xs text-[#a3a3a3] sm:flex-row lg:px-10">
-          <p>© {new Date().getFullYear()} {brand.name}. Tous droits réservés.</p>
-          <p>{finishes.map((f) => f.name).join(" · ")}</p>
+        <div className="mx-auto flex max-w-[1400px] flex-col items-center gap-4 px-4 py-6 text-center text-xs text-[#a3a3a3] sm:px-6 lg:flex-row lg:items-start lg:justify-between lg:px-10 lg:text-left">
+          <p className="shrink-0">
+            © {new Date().getFullYear()} {brand.name}. Tous droits réservés.
+          </p>
+          <p className="flex flex-wrap justify-center gap-x-2 gap-y-1 lg:justify-end">
+            {finishes.map((f, index) => (
+              <span key={f.name}>
+                {index > 0 && <span className="text-[#d4d4d4]">·</span>}{" "}
+                {f.name}
+              </span>
+            ))}
+          </p>
         </div>
       </div>
     </footer>

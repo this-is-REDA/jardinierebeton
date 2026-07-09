@@ -63,7 +63,7 @@ export function ContactSection() {
         </div>
 
         {status === "success" ? (
-          <div className="mt-12 max-w-2xl border border-[rgba(0, 0, 0,0.3)] bg-[#f5f5f5] p-10 text-center">
+          <div className="mt-12 max-w-2xl border border-[rgba(0, 0, 0,0.3)] bg-[#f5f5f5] p-6 text-center sm:p-10">
             <CheckCircle className="mx-auto text-[#171717]" size={40} />
             <p className="mt-4 font-serif text-xl text-[#171717]">
               Message envoyé avec succès

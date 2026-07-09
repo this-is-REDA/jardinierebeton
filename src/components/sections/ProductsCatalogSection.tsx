@@ -23,8 +23,8 @@ export async function ProductsCatalogSection() {
 
   return (
     <>
-      <section className="catalog-hero grid min-h-[420px] lg:min-h-[520px] lg:grid-cols-2">
-        <div className="catalog-hero-content flex flex-col justify-center px-6 py-14 lg:px-12 xl:px-20">
+      <section className="catalog-hero grid min-h-[360px] md:min-h-[420px] lg:min-h-[520px] lg:grid-cols-2">
+        <div className="catalog-hero-content flex flex-col justify-center px-4 py-10 sm:px-6 sm:py-14 lg:px-12 xl:px-20">
           <nav
             aria-label="Fil d'Ariane"
             className="mb-8 flex flex-wrap items-center gap-2 text-xs tracking-[0.08em] text-[#737373] uppercase"
@@ -44,7 +44,7 @@ export async function ProductsCatalogSection() {
             la masse et fabriquées au Maroc.
           </p>
 
-          <dl className="catalog-hero-stats mt-10 grid grid-cols-3 gap-3 sm:gap-4">
+          <dl className="catalog-hero-stats mt-8 grid grid-cols-3 gap-2 sm:mt-10 sm:gap-4">
             <div className="catalog-hero-stat">
               <dt className="catalog-hero-stat-value">{families.length}</dt>
               <dd className="catalog-hero-stat-label">Gammes</dd>
@@ -100,17 +100,18 @@ export async function ProductsCatalogSection() {
                 couleurs et tarifs disponibles.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {finishes.map((finish) => (
                 <div
                   key={finish.name}
-                  className="flex items-center gap-2 rounded-sm border border-[rgba(0,0,0,0.08)] px-3 py-2 text-xs text-[#525252]"
+                  className="flex items-center gap-2 rounded-sm border border-[rgba(0,0,0,0.08)] px-2.5 py-1.5 text-xs text-[#525252] sm:px-3 sm:py-2"
+                  title={finish.name}
                 >
                   <span
-                    className="h-4 w-4 rounded-full border border-[rgba(0,0,0,0.1)]"
+                    className="h-4 w-4 shrink-0 rounded-full border border-[rgba(0,0,0,0.1)]"
                     style={{ backgroundColor: finish.hex }}
                   />
-                  {finish.name}
+                  <span className="hidden sm:inline">{finish.name}</span>
                 </div>
               ))}
             </div>
@@ -119,7 +120,7 @@ export async function ProductsCatalogSection() {
           <ProductCatalogGrid families={families} finishes={finishes} />
 
           <div className="mt-20 grid gap-6 border-t border-[rgba(0,0,0,0.08)] pt-12 sm:grid-cols-2">
-            <div className="border border-[rgba(0,0,0,0.12)] bg-[#f5f5f5] px-8 py-10">
+            <div className="border border-[rgba(0,0,0,0.12)] bg-[#f5f5f5] px-5 py-8 sm:px-8 sm:py-10">
               <p className="font-serif text-xl text-[#171717]">
                 Tableau tarifaire détaillé
               </p>
@@ -131,7 +132,7 @@ export async function ProductsCatalogSection() {
                 Voir le catalogue tarifaire →
               </Link>
             </div>
-            <div className="border border-[rgba(0,0,0,0.12)] bg-[#f5f5f5] px-8 py-10">
+            <div className="border border-[rgba(0,0,0,0.12)] bg-[#f5f5f5] px-5 py-8 sm:px-8 sm:py-10">
               <p className="font-serif text-xl text-[#171717]">
                 Un projet en tête ?
               </p>

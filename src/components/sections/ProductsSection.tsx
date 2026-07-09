@@ -113,7 +113,14 @@ export async function ProductsSection({
                         : "home-family-gallery-rectangle"
                     }`}
                   >
-                    {family.photos.map((photo) => {
+                    {(() => {
+                      const seenFinishes = new Set<string>();
+                      return family.photos.filter((photo) => {
+                        if (seenFinishes.has(photo.finish)) return false;
+                        seenFinishes.add(photo.finish);
+                        return true;
+                      });
+                    })().map((photo) => {
                       const appearance =
                         photo.appearance ?? defaultPhotoAppearance;
                       const finish = finishes.find(
@@ -122,7 +129,7 @@ export async function ProductsSection({
 
                       return (
                         <figure
-                          key={`${photo.finish}-${photo.image}`}
+                          key={photo.id ?? `${photo.finish}-${photo.image}`}
                           className="home-family-photo group"
                         >
                           <div

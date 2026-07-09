@@ -64,7 +64,10 @@ export async function getProductPhotos(): Promise<ProductPhoto[]> {
 
   const [{ data: photos, error: photosError }, { data: appearanceSettings }] =
     await Promise.all([
-      supabase.from("product_photos").select("*").order("sort_order"),
+      supabase
+        .from("product_photos")
+        .select("id, family_id, finish, image_url, sort_order")
+        .order("sort_order"),
       supabase
         .from("site_settings")
         .select("value")
@@ -86,40 +89,24 @@ export async function getProductPhotos(): Promise<ProductPhoto[]> {
     (families ?? []).map((f) => [f.id, { name: f.name, slug: f.slug }])
   );
 
-  const mapped = photos.map((row) => {
+  return photos.map((row) => {
     const family = familyMap.get(row.family_id);
     return {
+      id: row.id,
       name: family?.name ?? "Jardinière",
-      finish: row.finish,
+      finish: row.finish.trim(),
       image: row.image_url,
       familySlug: family?.slug ?? "jardiniere-rectangle",
+      sortOrder: row.sort_order,
       appearance: getAppearanceForPhoto(
+        row.id,
         row.family_id,
         row.finish,
-        row.appearance,
+        null,
         appearanceMap
       ),
     };
   });
-
-  const byKey = new Map<string, ProductPhoto>();
-  for (const photo of mapped) {
-    const key = `${photo.familySlug}:${photo.finish}`;
-    const existing = byKey.get(key);
-    const isUploaded = photo.image.includes("supabase.co/storage/");
-
-    if (!existing) {
-      byKey.set(key, photo);
-      continue;
-    }
-
-    const existingIsUploaded = existing.image.includes("supabase.co/storage/");
-    if (isUploaded && !existingIsUploaded) {
-      byKey.set(key, photo);
-    }
-  }
-
-  return Array.from(byKey.values());
 }
 
 export async function getFinishes(): Promise<Finish[]> {

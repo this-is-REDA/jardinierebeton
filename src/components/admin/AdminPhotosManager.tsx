@@ -4,6 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { finishes as staticFinishes } from "@/lib/data/site-data";
+import {
+  getFinishGroupAppearance,
+  loadPhotoAppearancesMap,
+  normalizeFinishName,
+  savePhotoAppearanceForPhoto,
+} from "@/lib/photo-appearance-store";
 import type { ProductFamily, ProductPhotoRow, FinishRow } from "@/types/database";
 
 export function AdminPhotosManager({
@@ -19,19 +25,30 @@ export function AdminPhotosManager({
   const [message, setMessage] = useState("");
   const [familyId, setFamilyId] = useState("");
   const [finish, setFinish] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [appearanceMap, setAppearanceMap] = useState<
+    Record<string, import("@/lib/photo-appearance").PhotoAppearance>
+  >({});
+
+  const existingFinishPhotos = photos.filter(
+    (photo) =>
+      photo.family_id === familyId &&
+      normalizeFinishName(photo.finish) === normalizeFinishName(finish)
+  );
 
   async function loadData() {
     const supabase = createSupabaseBrowserClient();
-    const [{ data: f }, { data: p }, { data: fin }] = await Promise.all([
+    const [{ data: f }, { data: p }, { data: fin }, appearances] = await Promise.all([
       supabase.from("product_families").select("*").order("sort_order"),
       supabase.from("product_photos").select("*").order("sort_order"),
       supabase.from("finishes").select("*").order("sort_order"),
+      loadPhotoAppearancesMap(supabase),
     ]);
     setFamilies(f ?? []);
     setPhotos(p ?? []);
+    setAppearanceMap(appearances);
     const finishList =
       fin?.length
         ? fin
@@ -56,14 +73,16 @@ export function AdminPhotosManager({
 
     void (async () => {
       const supabase = createSupabaseBrowserClient();
-      const [{ data: f }, { data: p }, { data: fin }] = await Promise.all([
+      const [{ data: f }, { data: p }, { data: fin }, appearances] = await Promise.all([
         supabase.from("product_families").select("*").order("sort_order"),
         supabase.from("product_photos").select("*").order("sort_order"),
         supabase.from("finishes").select("*").order("sort_order"),
+        loadPhotoAppearancesMap(supabase),
       ]);
       if (cancelled) return;
       setFamilies(f ?? []);
       setPhotos(p ?? []);
+      setAppearanceMap(appearances);
       const finishList =
         fin?.length
           ? fin
@@ -91,39 +110,38 @@ export function AdminPhotosManager({
 
   useEffect(() => {
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [previewUrl]);
+  }, [previewUrls]);
+
+  function clearSelectedFiles() {
+    previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    setSelectedFiles([]);
+    setPreviewUrls([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setMessage("Veuillez sélectionner une image (JPG, PNG, WebP…).");
+    const files = Array.from(e.target.files ?? []).filter((file) =>
+      file.type.startsWith("image/")
+    );
+    if (!files.length) {
+      setMessage("Veuillez sélectionner des images (JPG, PNG, WebP…).");
       return;
     }
 
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-
-    setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+    clearSelectedFiles();
+    setSelectedFiles(files);
+    setPreviewUrls(files.map((file) => URL.createObjectURL(file)));
     setMessage("");
-  }
-
-  function clearSelectedFile() {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function addPhoto(e: React.FormEvent) {
     e.preventDefault();
     setMessage("");
 
-    if (!selectedFile) {
-      setMessage("Choisissez une photo depuis votre ordinateur.");
+    if (!selectedFiles.length) {
+      setMessage("Choisissez une ou plusieurs photos depuis votre ordinateur.");
       return;
     }
 
@@ -131,34 +149,58 @@ export function AdminPhotosManager({
 
     try {
       const supabase = createSupabaseBrowserClient();
-      const ext = selectedFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const normalizedFinish = normalizeFinishName(finish);
+      const finishPhotos = photos.filter(
+        (p) =>
+          p.family_id === familyId &&
+          normalizeFinishName(p.finish) === normalizedFinish
+      );
+      const appearanceToApply = getFinishGroupAppearance(
+        familyId,
+        normalizedFinish,
+        finishPhotos,
+        appearanceMap
+      );
+      let nextSortOrder =
+        finishPhotos.reduce((max, photo) => Math.max(max, photo.sort_order), 0) +
+        1;
 
-      const { error: uploadError } = await supabase.storage
-        .from("product-images")
-        .upload(path, selectedFile, { upsert: false });
+      for (const file of selectedFiles) {
+        const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+        const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-      if (uploadError) throw uploadError;
+        const { error: uploadError } = await supabase.storage
+          .from("product-images")
+          .upload(path, file, { upsert: false });
 
-      const { data: urlData } = supabase.storage
-        .from("product-images")
-        .getPublicUrl(path);
+        if (uploadError) throw uploadError;
 
-      const nextSortOrder =
-        photos.filter((p) => p.family_id === familyId).length + 1;
+        const { data: urlData } = supabase.storage
+          .from("product-images")
+          .getPublicUrl(path);
 
-      const { error: insertError } = await supabase.from("product_photos").insert({
-        family_id: familyId,
-        finish,
-        image_url: urlData.publicUrl,
-        sort_order: nextSortOrder,
-      });
+        const { data: inserted, error: insertError } = await supabase
+          .from("product_photos")
+          .insert({
+            family_id: familyId,
+            finish: normalizedFinish,
+            image_url: urlData.publicUrl,
+            sort_order: nextSortOrder,
+          })
+          .select("id")
+          .single();
 
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
+        if (inserted?.id) {
+          await savePhotoAppearanceForPhoto(supabase, inserted.id, appearanceToApply);
+        }
+        nextSortOrder += 1;
+      }
 
-      setFinish(finishes[0]?.name ?? "");
-      clearSelectedFile();
-      setMessage("Photo ajoutée au site.");
+      clearSelectedFiles();
+      setMessage(
+        `${selectedFiles.length} photo${selectedFiles.length > 1 ? "s" : ""} ajoutée${selectedFiles.length > 1 ? "s" : ""} à la galerie ${normalizedFinish} (${finishPhotos.length + selectedFiles.length} image${finishPhotos.length + selectedFiles.length > 1 ? "s" : ""} sur le site).`
+      );
       await loadData();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Erreur lors de l'ajout.");
@@ -180,7 +222,13 @@ export function AdminPhotosManager({
 
   const addPhotoForm = (
     <form onSubmit={addPhoto} className="admin-card space-y-5">
-      <h2 className="font-serif text-xl text-[#171717]">Ajouter une photo</h2>
+      <h2 className="font-serif text-xl text-[#171717]">
+        Ajouter des images à une finition
+      </h2>
+      <p className="text-sm text-[#a3a3a3]">
+        La photo rejoint la galerie de la couleur choisie sur le site, avec le
+        même cadrage que les images déjà en ligne.
+      </p>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
@@ -211,15 +259,21 @@ export function AdminPhotosManager({
               </option>
             ))}
           </select>
+          <p className="mt-2 text-xs text-[#a3a3a3]">
+            {existingFinishPhotos.length > 0
+              ? `${existingFinishPhotos.length} image${existingFinishPhotos.length > 1 ? "s" : ""} déjà en ligne pour cette couleur.`
+              : "Première image pour cette couleur."}
+          </p>
         </div>
       </div>
 
       <div>
-        <label className="label-caps mb-2 block">Photo</label>
+        <label className="label-caps mb-2 block">Photos</label>
         <input
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/jpg"
+          multiple
           onChange={handleFileSelect}
           className="hidden"
         />
@@ -230,14 +284,17 @@ export function AdminPhotosManager({
             disabled={uploading}
             className="admin-btn admin-btn-secondary"
           >
-            Choisir une photo
+            Choisir une ou plusieurs photos
           </button>
-          {selectedFile && (
+          {selectedFiles.length > 0 && (
             <>
-              <span className="text-sm text-[#a3a3a3]">{selectedFile.name}</span>
+              <span className="text-sm text-[#a3a3a3]">
+                {selectedFiles.length} fichier
+                {selectedFiles.length > 1 ? "s" : ""}
+              </span>
               <button
                 type="button"
-                onClick={clearSelectedFile}
+                onClick={clearSelectedFiles}
                 className="admin-btn admin-btn-danger admin-btn-sm"
               >
                 Retirer
@@ -247,16 +304,23 @@ export function AdminPhotosManager({
         </div>
       </div>
 
-      {previewUrl && (
-        <div className="relative aspect-[4/3] max-w-sm overflow-hidden border border-[rgba(0, 0, 0,0.12)] bg-[#f5f5f5]">
-          <Image
-            src={previewUrl}
-            alt="Aperçu"
-            fill
-            className="object-cover"
-            sizes="400px"
-            unoptimized
-          />
+      {previewUrls.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          {previewUrls.map((url, index) => (
+            <div
+              key={url}
+              className="relative aspect-[4/3] overflow-hidden border border-[rgba(0, 0, 0,0.12)] bg-[#f5f5f5]"
+            >
+              <Image
+                src={url}
+                alt={`Aperçu ${index + 1}`}
+                fill
+                className="object-cover"
+                sizes="200px"
+                unoptimized
+              />
+            </div>
+          ))}
         </div>
       )}
 
@@ -264,10 +328,14 @@ export function AdminPhotosManager({
 
       <button
         type="submit"
-        disabled={uploading || !selectedFile}
+        disabled={uploading || selectedFiles.length === 0}
         className="admin-btn admin-btn-primary"
       >
-        {uploading ? "Envoi en cours..." : "Enregistrer la photo"}
+        {uploading
+          ? "Envoi en cours..."
+          : selectedFiles.length > 1
+            ? `Enregistrer ${selectedFiles.length} photos`
+            : "Enregistrer la photo"}
       </button>
     </form>
   );
@@ -278,29 +346,60 @@ export function AdminPhotosManager({
       {photos.length === 0 ? (
         <p className="mt-4 text-sm text-[#a3a3a3]">Aucune photo pour le moment.</p>
       ) : (
-        <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {photos.map((photo) => {
-            const family = families.find((f) => f.id === photo.family_id);
+        <div className="mt-6 space-y-8">
+          {families.map((family) => {
+            const familyPhotos = photos.filter((p) => p.family_id === family.id);
+            if (!familyPhotos.length) return null;
+
+            const byFinish = familyPhotos.reduce<Record<string, ProductPhotoRow[]>>(
+              (acc, photo) => {
+                (acc[photo.finish] ??= []).push(photo);
+                return acc;
+              },
+              {}
+            );
+
             return (
-              <div key={photo.id} className="border border-[rgba(0, 0, 0,0.08)] p-4">
-                <div className="relative aspect-[4/3] overflow-hidden bg-[#f5f5f5]">
-                  <Image
-                    src={photo.image_url}
-                    alt={photo.finish}
-                    fill
-                    className="object-cover"
-                    sizes="300px"
-                  />
+              <div key={family.id}>
+                <h3 className="font-serif text-lg text-[#171717]">{family.name}</h3>
+                <div className="mt-4 space-y-6">
+                  {Object.entries(byFinish).map(([finishName, finishPhotos]) => (
+                    <div key={finishName}>
+                      <p className="text-sm font-medium text-[#525252]">
+                        {finishName}{" "}
+                        <span className="font-normal text-[#a3a3a3]">
+                          · {finishPhotos.length} image
+                          {finishPhotos.length > 1 ? "s" : ""}
+                        </span>
+                      </p>
+                      <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {finishPhotos.map((photo) => (
+                          <div
+                            key={photo.id}
+                            className="border border-[rgba(0, 0, 0,0.08)] p-4"
+                          >
+                            <div className="relative aspect-[4/3] overflow-hidden bg-[#f5f5f5]">
+                              <Image
+                                src={photo.image_url}
+                                alt={photo.finish}
+                                fill
+                                className="object-cover"
+                                sizes="300px"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => deletePhoto(photo.id)}
+                              className="admin-btn admin-btn-danger admin-btn-sm mt-3"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <p className="mt-3 font-serif text-[#171717]">{family?.name}</p>
-                <p className="text-sm text-[#171717]">{photo.finish}</p>
-                <button
-                  type="button"
-                  onClick={() => deletePhoto(photo.id)}
-                  className="admin-btn admin-btn-danger admin-btn-sm mt-3"
-                >
-                  Supprimer
-                </button>
               </div>
             );
           })}

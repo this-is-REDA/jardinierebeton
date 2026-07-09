@@ -9,7 +9,7 @@ export default function SiteLayout({
   return (
     <>
       <Header />
-      <main>{children}</main>
+      <main className="site-main">{children}</main>
       <Footer />
       <WhatsAppButtonWrapper />
       <VoiceWidget />

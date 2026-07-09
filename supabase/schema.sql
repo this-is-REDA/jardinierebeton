@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS product_variants (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Photos produits par finition
+-- Photos produits par finition (plusieurs images possibles par couleur)
 CREATE TABLE IF NOT EXISTS product_photos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   family_id UUID NOT NULL REFERENCES product_families(id) ON DELETE CASCADE,
@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS product_photos (
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+COMMENT ON TABLE product_photos IS
+  'Product gallery images. Multiple rows per (family_id, finish) are allowed; sort_order orders the gallery for that finish.';
 
 -- Finitions (footer, référence)
 CREATE TABLE IF NOT EXISTS finishes (
@@ -75,6 +78,8 @@ CREATE INDEX IF NOT EXISTS idx_variants_family ON product_variants(family_id);
 CREATE INDEX IF NOT EXISTS idx_photos_family ON product_photos(family_id);
 CREATE INDEX IF NOT EXISTS idx_variants_sort ON product_variants(sort_order);
 CREATE INDEX IF NOT EXISTS idx_photos_sort ON product_photos(sort_order);
+CREATE INDEX IF NOT EXISTS idx_photos_family_finish_sort
+  ON product_photos (family_id, finish, sort_order);
 
 -- RLS
 ALTER TABLE product_families ENABLE ROW LEVEL SECURITY;

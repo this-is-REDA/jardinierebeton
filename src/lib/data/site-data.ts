@@ -21,10 +21,12 @@ export interface Finish {
 }
 
 export interface ProductPhoto {
+  id?: string;
   name: string;
   finish: string;
   image: string;
   familySlug: string;
+  sortOrder?: number;
   appearance?: import("@/lib/photo-appearance").PhotoAppearance;
 }
 
@@ -53,36 +55,42 @@ export const navLinks = [
 
 export const productPhotos: ProductPhoto[] = [
   {
+    id: "static-rectangle-gris-ciment",
     name: "Jardinière Rectangle",
     finish: "Gris Ciment",
     image: "/images/products/rectangle-gris-ciment.jpg",
     familySlug: "jardiniere-rectangle",
   },
   {
+    id: "static-rectangle-terracotta",
     name: "Jardinière Rectangle",
     finish: "Terracotta",
     image: "/images/products/rectangle-terracotta.jpg",
     familySlug: "jardiniere-rectangle",
   },
   {
+    id: "static-rectangle-sable",
     name: "Jardinière Rectangle",
     finish: "Sable",
     image: "/images/products/rectangle-sable.jpg",
     familySlug: "jardiniere-rectangle",
   },
   {
+    id: "static-rectangle-anthracite",
     name: "Jardinière Rectangle",
     finish: "Anthracite",
     image: "/images/products/rectangle-anthracite.jpg",
     familySlug: "jardiniere-rectangle",
   },
   {
+    id: "static-rectangle-ocre",
     name: "Jardinière Rectangle",
     finish: "Ocre",
     image: "/images/products/rectangle-ocre.jpg",
     familySlug: "jardiniere-rectangle",
   },
   {
+    id: "static-carree-gris-ciment",
     name: "Jardinière Carrée",
     finish: "Gris Ciment",
     image: "/images/products/carree-gris-ciment.jpg",

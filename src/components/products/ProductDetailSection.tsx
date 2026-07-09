@@ -26,7 +26,7 @@ export async function ProductDetailSection({ slug }: { slug: string }) {
   );
 
   return (
-    <section className="section-shell lg:px-10">
+    <section className="section-shell px-4 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-[1400px]">
         <ProductPageView
           family={family}

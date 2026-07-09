@@ -10,8 +10,50 @@ export const PHOTO_APPEARANCES_SETTINGS_KEY = "photo_appearances";
 
 type Supabase = SupabaseClient<Database>;
 
+/** @deprecated Prefer photo id keys. Kept for legacy settings. */
 export function photoAppearanceKey(familyId: string, finish: string): string {
   return `${familyId}:${finish}`;
+}
+
+export function photoAppearancePhotoKey(photoId: string): string {
+  return photoId;
+}
+
+export function normalizeFinishName(finish: string): string {
+  return finish.trim();
+}
+
+type FinishPhotoLike = {
+  id: string;
+  finish: string;
+  sort_order?: number;
+  appearance?: unknown;
+};
+
+export function getFinishGroupAppearance(
+  familyId: string,
+  finish: string,
+  photos: FinishPhotoLike[],
+  appearanceMap: Record<string, PhotoAppearance>
+): PhotoAppearance {
+  const normalizedFinish = normalizeFinishName(finish);
+  const finishPhotos = photos
+    .filter((photo) => normalizeFinishName(photo.finish) === normalizedFinish)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+  const primary = finishPhotos[0];
+  if (primary) {
+    return getAppearanceForPhoto(
+      primary.id,
+      familyId,
+      primary.finish,
+      primary.appearance,
+      appearanceMap
+    );
+  }
+
+  const legacyKey = photoAppearanceKey(familyId, normalizedFinish);
+  return appearanceMap[legacyKey] ?? defaultPhotoAppearance;
 }
 
 export function parsePhotoAppearancesMap(
@@ -43,6 +85,38 @@ export async function loadPhotoAppearancesMap(
   return parsePhotoAppearancesMap(data?.value);
 }
 
+export async function savePhotoAppearanceForPhoto(
+  supabase: Supabase,
+  photoId: string,
+  appearance: PhotoAppearance
+): Promise<{ error?: string }> {
+  // Column may be missing if migration not applied yet — site_settings is the source of truth.
+  await supabase
+    .from("product_photos")
+    .update({
+      appearance,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", photoId);
+
+  const current = await loadPhotoAppearancesMap(supabase);
+  const { error } = await supabase.from("site_settings").upsert({
+    key: PHOTO_APPEARANCES_SETTINGS_KEY,
+    value: {
+      ...current,
+      [photoAppearancePhotoKey(photoId)]: appearance,
+    },
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {};
+}
+
+/** @deprecated Use savePhotoAppearanceForPhoto */
 export async function savePhotoAppearanceForFinish(
   supabase: Supabase,
   familyId: string,
@@ -69,20 +143,27 @@ export async function savePhotoAppearanceForFinish(
 }
 
 export function getAppearanceForPhoto(
+  photoId: string | undefined,
   familyId: string,
   finish: string,
   columnValue: unknown,
   settingsMap: Record<string, PhotoAppearance>
 ): PhotoAppearance {
-  const key = photoAppearanceKey(familyId, finish);
-  const fromSettings = settingsMap[key];
-
-  if (fromSettings) {
-    return fromSettings;
+  if (photoId) {
+    const fromPhotoSettings = settingsMap[photoAppearancePhotoKey(photoId)];
+    if (fromPhotoSettings) {
+      return fromPhotoSettings;
+    }
   }
 
   if (columnValue) {
     return parsePhotoAppearance(columnValue);
+  }
+
+  const legacyKey = photoAppearanceKey(familyId, normalizeFinishName(finish));
+  const fromLegacy = settingsMap[legacyKey];
+  if (fromLegacy) {
+    return fromLegacy;
   }
 
   return defaultPhotoAppearance;

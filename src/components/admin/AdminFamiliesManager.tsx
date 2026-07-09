@@ -13,11 +13,14 @@ import {
 } from "@/lib/photo-appearance";
 import {
   getAppearanceForPhoto,
+  getFinishGroupAppearance,
   loadPhotoAppearancesMap,
-  savePhotoAppearanceForFinish,
+  normalizeFinishName,
+  savePhotoAppearanceForPhoto,
 } from "@/lib/photo-appearance-store";
 import { finishes as staticFinishes } from "@/lib/data/site-data";
 import type { ProductFamily, ProductPhotoRow, FinishRow } from "@/types/database";
+import { ArrowDown, ArrowUp } from "lucide-react";
 
 function slugify(name: string): string {
   return name
@@ -257,8 +260,8 @@ function FamilyRow({
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [panelMessage, setPanelMessage] = useState("");
   const [newFinish, setNewFinish] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [newAppearance, setNewAppearance] = useState<PhotoAppearance>(defaultPhotoAppearance);
   const [appearanceMap, setAppearanceMap] = useState<Record<string, PhotoAppearance>>({});
   const [editingAppearanceId, setEditingAppearanceId] = useState<string | null>(null);
@@ -266,15 +269,73 @@ function FamilyRow({
   const [savingAppearance, setSavingAppearance] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  const photosByFinish = finishes
+    .map((finish) => ({
+      finish: finish.name,
+      photos: photos.filter(
+        (photo) => normalizeFinishName(photo.finish) === normalizeFinishName(finish.name)
+      ),
+    }))
+    .filter((group) => group.photos.length > 0);
+
+  const orphanFinishPhotos = photos.filter(
+    (photo) =>
+      !finishes.some(
+        (finish) =>
+          normalizeFinishName(finish.name) === normalizeFinishName(photo.finish)
+      )
+  );
+  const groupedPhotos = (
+    orphanFinishPhotos.length === 0
+      ? photosByFinish
+      : [
+          ...photosByFinish,
+          ...Object.entries(
+            orphanFinishPhotos.reduce<Record<string, ProductPhotoRow[]>>(
+              (acc, photo) => {
+                (acc[photo.finish] ??= []).push(photo);
+                return acc;
+              },
+              {}
+            )
+          ).map(([finish, groupPhotos]) => ({ finish, photos: groupPhotos })),
+        ]
+  ).map((group) => ({
+    ...group,
+    photos: [...group.photos].sort((a, b) => a.sort_order - b.sort_order),
+  }));
+
   const previewAspectClass = family.slug.includes("carree")
     ? "aspect-square"
     : "aspect-[4/3]";
 
+  const existingFinishPhotos = photos.filter(
+    (photo) => normalizeFinishName(photo.finish) === normalizeFinishName(newFinish)
+  );
+
+  function appearanceForFinish(finishName: string): PhotoAppearance {
+    return getFinishGroupAppearance(family.id, finishName, photos, appearanceMap);
+  }
+
+  useEffect(() => {
+    if (!editing || !newFinish) return;
+    setNewAppearance(appearanceForFinish(newFinish));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, newFinish, photos, appearanceMap]);
+
   useEffect(() => {
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [previewUrl]);
+  }, [previewUrls]);
+
+  function clearSelectedFiles() {
+    previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    setSelectedFiles([]);
+    setPreviewUrls([]);
+    setNewAppearance(appearanceForFinish(newFinish));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   async function loadFamilyData() {
     setLoadingPhotos(true);
@@ -316,16 +377,12 @@ function FamilyRow({
   }
 
   function closeEdit() {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    setNewAppearance(defaultPhotoAppearance);
+    clearSelectedFiles();
     setEditingAppearanceId(null);
     setAppearanceDraft(defaultPhotoAppearance);
     setPanelMessage("");
     setEditing(false);
     setName(family.name);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleSaveName() {
@@ -339,7 +396,10 @@ function FamilyRow({
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase
       .from("product_photos")
-      .update({ finish, updated_at: new Date().toISOString() })
+      .update({
+        finish: normalizeFinishName(finish),
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", photoId);
 
     if (error) {
@@ -361,34 +421,63 @@ function FamilyRow({
     setPanelMessage("Photo supprimée.");
   }
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function movePhoto(photoId: string, direction: "up" | "down") {
+    const photo = photos.find((item) => item.id === photoId);
+    if (!photo) return;
 
-    if (!file.type.startsWith("image/")) {
-      setPanelMessage("Veuillez sélectionner une image (JPG, PNG, WebP…).");
+    const siblings = photos
+      .filter(
+        (item) =>
+          normalizeFinishName(item.finish) === normalizeFinishName(photo.finish)
+      )
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const index = siblings.findIndex((item) => item.id === photoId);
+    const swapWith = direction === "up" ? siblings[index - 1] : siblings[index + 1];
+    if (!swapWith) return;
+
+    const supabase = createSupabaseBrowserClient();
+    const now = new Date().toISOString();
+    const { error: firstError } = await supabase
+      .from("product_photos")
+      .update({ sort_order: swapWith.sort_order, updated_at: now })
+      .eq("id", photo.id);
+    const { error: secondError } = await supabase
+      .from("product_photos")
+      .update({ sort_order: photo.sort_order, updated_at: now })
+      .eq("id", swapWith.id);
+
+    if (firstError || secondError) {
+      setPanelMessage(firstError?.message ?? secondError?.message ?? "Erreur de tri.");
       return;
     }
 
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
-    setNewAppearance(defaultPhotoAppearance);
+    await loadFamilyData();
+    await onChanged();
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []).filter((file) =>
+      file.type.startsWith("image/")
+    );
+    if (!files.length) {
+      setPanelMessage("Veuillez sélectionner des images (JPG, PNG, WebP…).");
+      return;
+    }
+
+    clearSelectedFiles();
+    setSelectedFiles(files);
+    setPreviewUrls(files.map((file) => URL.createObjectURL(file)));
     setPanelMessage("");
   }
 
   async function savePhotoAppearance(photoId: string) {
-    const photo = photos.find((item) => item.id === photoId);
-    if (!photo) return;
-
     setSavingAppearance(true);
     setPanelMessage("");
 
     const supabase = createSupabaseBrowserClient();
-    const result = await savePhotoAppearanceForFinish(
+    const result = await savePhotoAppearanceForPhoto(
       supabase,
-      family.id,
-      photo.finish,
+      photoId,
       appearanceDraft
     );
 
@@ -401,17 +490,18 @@ function FamilyRow({
 
     setAppearanceMap((current) => ({
       ...current,
-      [`${family.id}:${photo.finish}`]: appearanceDraft,
+      [photoId]: appearanceDraft,
     }));
     setEditingAppearanceId(null);
+    await loadFamilyData();
     await onChanged();
     setPanelMessage("Apparence enregistrée.");
   }
 
   async function addPhoto(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedFile) {
-      setPanelMessage("Choisissez une photo.");
+    if (!selectedFiles.length) {
+      setPanelMessage("Choisissez une ou plusieurs photos.");
       return;
     }
 
@@ -420,71 +510,72 @@ function FamilyRow({
 
     try {
       const supabase = createSupabaseBrowserClient();
+      const normalizedFinish = normalizeFinishName(newFinish);
+      const finishPhotos = photos.filter(
+        (photo) => normalizeFinishName(photo.finish) === normalizedFinish
+      );
+      const appearanceToApply = newAppearance;
+      let nextSortOrder =
+        finishPhotos.reduce((max, photo) => Math.max(max, photo.sort_order), 0) +
+        1;
+      const insertedIds: string[] = [];
 
-      const { data: existingPhotos } = await supabase
-        .from("product_photos")
-        .select("id, image_url")
-        .eq("family_id", family.id)
-        .eq("finish", newFinish);
+      for (const file of selectedFiles) {
+        const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+        const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-      if (existingPhotos?.length) {
-        await supabase
+        const { error: uploadError } = await supabase.storage
+          .from("product-images")
+          .upload(path, file, {
+            upsert: false,
+            contentType: file.type || `image/${ext === "jpg" ? "jpeg" : ext}`,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("product-images")
+          .getPublicUrl(path);
+
+        const { data: inserted, error: insertError } = await supabase
           .from("product_photos")
-          .delete()
-          .eq("family_id", family.id)
-          .eq("finish", newFinish);
+          .insert({
+            family_id: family.id,
+            finish: normalizedFinish,
+            image_url: urlData.publicUrl,
+            sort_order: nextSortOrder,
+          })
+          .select("id")
+          .single();
+
+        if (insertError) throw insertError;
+        if (inserted?.id) insertedIds.push(inserted.id);
+        nextSortOrder += 1;
       }
 
-      const ext = selectedFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      let appearanceError: string | undefined;
+      for (const photoId of insertedIds) {
+        const appearanceResult = await savePhotoAppearanceForPhoto(
+          supabase,
+          photoId,
+          appearanceToApply
+        );
+        if (appearanceResult.error) {
+          appearanceError = appearanceResult.error;
+        }
+      }
 
-      const { error: uploadError } = await supabase.storage
-        .from("product-images")
-        .upload(path, selectedFile, {
-          upsert: false,
-          contentType: selectedFile.type || `image/${ext === "jpg" ? "jpeg" : ext}`,
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("product-images")
-        .getPublicUrl(path);
-
-      const { error: insertError } = await supabase.from("product_photos").insert({
-        family_id: family.id,
-        finish: newFinish,
-        image_url: urlData.publicUrl,
-        sort_order: photos.length + 1,
-      });
-
-      if (insertError) throw insertError;
-
-      const appearanceResult = await savePhotoAppearanceForFinish(
-        supabase,
-        family.id,
-        newFinish,
-        newAppearance
-      );
-
-      if (appearanceResult.error) {
+      if (appearanceError) {
         setPanelMessage(
-          `Photo ajoutée, mais l'apparence n'a pas pu être enregistrée : ${appearanceResult.error}`
+          `${selectedFiles.length} photo${selectedFiles.length > 1 ? "s" : ""} ajoutée${selectedFiles.length > 1 ? "s" : ""}, mais l'apparence n'a pas pu être enregistrée : ${appearanceError}`
         );
       } else {
-        setAppearanceMap((current) => ({
-          ...current,
-          [`${family.id}:${newFinish}`]: newAppearance,
-        }));
-        setPanelMessage("Photo ajoutée.");
+        setPanelMessage(
+          `${selectedFiles.length} photo${selectedFiles.length > 1 ? "s" : ""} ajoutée${selectedFiles.length > 1 ? "s" : ""} à la galerie ${normalizedFinish} (${finishPhotos.length + selectedFiles.length} image${finishPhotos.length + selectedFiles.length > 1 ? "s" : ""} sur le site).`
+        );
       }
 
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setNewAppearance(defaultPhotoAppearance);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-
+      clearSelectedFiles();
       await loadFamilyData();
       await onChanged();
     } catch (err) {
@@ -565,106 +656,166 @@ function FamilyRow({
 
           <div>
             <h3 className="font-serif text-lg text-[#171717]">Photos de la gamme</h3>
+            <p className="mt-1 text-sm text-[#a3a3a3]">
+              Plusieurs images par finition — la première devient l&apos;image
+              principale sur le site.
+            </p>
             {loadingPhotos ? (
               <p className="mt-3 text-sm text-[#a3a3a3]">Chargement...</p>
             ) : photos.length === 0 ? (
               <p className="mt-3 text-sm text-[#a3a3a3]">Aucune photo pour cette gamme.</p>
             ) : (
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {photos.map((photo) => {
-                  const appearance = getAppearanceForPhoto(
-                    family.id,
-                    photo.finish,
-                    photo.appearance,
-                    appearanceMap
-                  );
-                  const isEditingAppearance = editingAppearanceId === photo.id;
-
-                  return (
-                  <div
-                    key={photo.id}
-                    className="border border-[rgba(0, 0, 0,0.08)] p-3"
-                  >
-                    <div className={`relative overflow-hidden bg-[#f5f5f5] ${previewAspectClass}`}>
-                      <Image
-                        src={photo.image_url}
-                        alt={photo.finish}
-                        fill
-                        className={photoAppearanceClassName(appearance.fit)}
-                        style={photoAppearanceStyle(appearance)}
-                        sizes="240px"
-                        unoptimized={photo.image_url.includes("supabase.co")}
-                      />
+              <div className="mt-4 space-y-8">
+                {groupedPhotos.map((group) => (
+                  <div key={group.finish}>
+                    <div className="mb-3 flex items-center gap-2">
+                      <p className="font-medium text-[#171717]">{group.finish}</p>
+                      <span className="text-xs text-[#a3a3a3]">
+                        {group.photos.length} image
+                        {group.photos.length > 1 ? "s" : ""}
+                      </span>
                     </div>
-                    <label className="label-caps mb-1 mt-3 block">Finition</label>
-                    <select
-                      className="input-field"
-                      value={photo.finish}
-                      onChange={(e) => updatePhotoFinish(photo.id, e.target.value)}
-                    >
-                      {finishes.map((f) => (
-                        <option key={f.id} value={f.name} className="bg-[#f5f5f5]">
-                          {f.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {group.photos.map((photo, index) => {
+                        const appearance = getAppearanceForPhoto(
+                          photo.id,
+                          family.id,
+                          photo.finish,
+                          photo.appearance,
+                          appearanceMap
+                        );
+                        const isEditingAppearance = editingAppearanceId === photo.id;
 
-                    {isEditingAppearance ? (
-                      <div className="mt-4 border-t border-[rgba(0,0,0,0.08)] pt-4">
-                        <PhotoAppearanceEditor
-                          imageUrl={photo.image_url}
-                          alt={photo.finish}
-                          appearance={appearanceDraft}
-                          onChange={setAppearanceDraft}
-                          aspectClass={previewAspectClass}
-                        />
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => savePhotoAppearance(photo.id)}
-                            disabled={savingAppearance}
-                            className="admin-btn admin-btn-primary admin-btn-sm"
+                        return (
+                          <div
+                            key={photo.id}
+                            className="border border-[rgba(0, 0, 0,0.08)] p-3"
                           >
-                            {savingAppearance ? "..." : "Enregistrer l'apparence"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingAppearanceId(null)}
-                            className="admin-btn admin-btn-secondary admin-btn-sm"
-                          >
-                            Annuler
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingAppearanceId(photo.id);
-                          setAppearanceDraft(appearance);
-                        }}
-                        className="admin-btn admin-btn-secondary admin-btn-sm mt-3 w-full"
-                      >
-                        Modifier l&apos;apparence
-                      </button>
-                    )}
+                            <div
+                              className={`relative overflow-hidden bg-[#f5f5f5] ${previewAspectClass}`}
+                            >
+                              <Image
+                                src={photo.image_url}
+                                alt={`${photo.finish} — ${index + 1}`}
+                                fill
+                                className={photoAppearanceClassName(appearance.fit)}
+                                style={photoAppearanceStyle(appearance)}
+                                sizes="240px"
+                                unoptimized={photo.image_url.includes("supabase.co")}
+                              />
+                              {index === 0 && (
+                                <span className="absolute top-2 left-2 rounded-sm bg-[#171717] px-2 py-0.5 text-[0.6rem] font-semibold tracking-[0.08em] text-white uppercase">
+                                  Principale
+                                </span>
+                              )}
+                            </div>
+                            <label className="label-caps mb-1 mt-3 block">Finition</label>
+                            <select
+                              className="input-field"
+                              value={photo.finish}
+                              onChange={(e) =>
+                                updatePhotoFinish(photo.id, e.target.value)
+                              }
+                            >
+                              {finishes.map((f) => (
+                                <option
+                                  key={f.id}
+                                  value={f.name}
+                                  className="bg-[#f5f5f5]"
+                                >
+                                  {f.name}
+                                </option>
+                              ))}
+                            </select>
 
-                    <button
-                      type="button"
-                      onClick={() => deletePhoto(photo.id)}
-                      className="admin-btn admin-btn-danger admin-btn-sm mt-3 w-full"
-                    >
-                      Supprimer
-                    </button>
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => movePhoto(photo.id, "up")}
+                                disabled={index === 0}
+                                className="admin-btn admin-btn-secondary admin-btn-sm flex-1"
+                                aria-label="Monter"
+                              >
+                                <ArrowUp size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => movePhoto(photo.id, "down")}
+                                disabled={index === group.photos.length - 1}
+                                className="admin-btn admin-btn-secondary admin-btn-sm flex-1"
+                                aria-label="Descendre"
+                              >
+                                <ArrowDown size={14} />
+                              </button>
+                            </div>
+
+                            {isEditingAppearance ? (
+                              <div className="mt-4 border-t border-[rgba(0,0,0,0.08)] pt-4">
+                                <PhotoAppearanceEditor
+                                  imageUrl={photo.image_url}
+                                  alt={photo.finish}
+                                  appearance={appearanceDraft}
+                                  onChange={setAppearanceDraft}
+                                  aspectClass={previewAspectClass}
+                                />
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => savePhotoAppearance(photo.id)}
+                                    disabled={savingAppearance}
+                                    className="admin-btn admin-btn-primary admin-btn-sm"
+                                  >
+                                    {savingAppearance
+                                      ? "..."
+                                      : "Enregistrer l'apparence"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingAppearanceId(null)}
+                                    className="admin-btn admin-btn-secondary admin-btn-sm"
+                                  >
+                                    Annuler
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingAppearanceId(photo.id);
+                                  setAppearanceDraft(appearance);
+                                }}
+                                className="admin-btn admin-btn-secondary admin-btn-sm mt-3 w-full"
+                              >
+                                Modifier l&apos;apparence
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => deletePhoto(photo.id)}
+                              className="admin-btn admin-btn-danger admin-btn-sm mt-3 w-full"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  );
-                })}
+                ))}
               </div>
             )}
           </div>
 
           <form onSubmit={addPhoto} className="border border-[rgba(0, 0, 0,0.08)] p-4">
-            <h3 className="font-serif text-lg text-[#171717]">Ajouter une photo</h3>
+            <h3 className="font-serif text-lg text-[#171717]">
+              Ajouter des images à une finition
+            </h3>
+            <p className="mt-1 text-sm text-[#a3a3a3]">
+              Les nouvelles photos rejoignent la galerie de la couleur choisie sur
+              le site, avec le même cadrage que les images existantes.
+            </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="label-caps mb-2 block">Finition</label>
@@ -679,13 +830,19 @@ function FamilyRow({
                     </option>
                   ))}
                 </select>
+                <p className="mt-2 text-xs text-[#a3a3a3]">
+                  {existingFinishPhotos.length > 0
+                    ? `${existingFinishPhotos.length} image${existingFinishPhotos.length > 1 ? "s" : ""} déjà en ligne pour cette couleur — la nouvelle s'ajoute à la suite.`
+                    : "Première image pour cette couleur sur le site."}
+                </p>
               </div>
               <div>
-                <label className="label-caps mb-2 block">Fichier</label>
+                <label className="label-caps mb-2 block">Fichiers</label>
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/jpg"
+                  multiple
                   onChange={handleFileSelect}
                   className="hidden"
                 />
@@ -694,31 +851,62 @@ function FamilyRow({
                   onClick={() => fileInputRef.current?.click()}
                   className="admin-btn admin-btn-secondary w-full sm:w-auto"
                 >
-                  Choisir une photo
+                  Choisir une ou plusieurs photos
                 </button>
-                {selectedFile && (
-                  <p className="mt-2 text-xs text-[#a3a3a3]">{selectedFile.name}</p>
+                {selectedFiles.length > 0 && (
+                  <p className="mt-2 text-xs text-[#a3a3a3]">
+                    {selectedFiles.length} fichier
+                    {selectedFiles.length > 1 ? "s" : ""} sélectionné
+                    {selectedFiles.length > 1 ? "s" : ""}
+                  </p>
                 )}
               </div>
             </div>
 
-            {previewUrl && (
-              <PhotoAppearanceEditor
-                imageUrl={previewUrl}
-                alt="Aperçu"
-                appearance={newAppearance}
-                onChange={setNewAppearance}
-                aspectClass={previewAspectClass}
-                previewLabel="Aperçu — réglages appliqués sur le site"
-              />
+            {previewUrls.length > 0 && (
+              <div className="mt-4 space-y-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {previewUrls.map((url, index) => (
+                    <div
+                      key={url}
+                      className={`relative overflow-hidden border border-[rgba(0,0,0,0.08)] bg-[#f5f5f5] ${previewAspectClass}`}
+                    >
+                      <Image
+                        src={url}
+                        alt={`Aperçu ${index + 1}`}
+                        fill
+                        className="object-contain"
+                        sizes="200px"
+                        unoptimized
+                      />
+                    </div>
+                  ))}
+                </div>
+                <PhotoAppearanceEditor
+                  imageUrl={previewUrls[0]}
+                  alt="Aperçu"
+                  appearance={newAppearance}
+                  onChange={setNewAppearance}
+                  aspectClass={previewAspectClass}
+                  previewLabel={
+                    existingFinishPhotos.length > 0
+                      ? "Aperçu — même cadrage que les photos existantes de cette couleur"
+                      : "Aperçu — réglages appliqués sur le site"
+                  }
+                />
+              </div>
             )}
 
             <button
               type="submit"
-              disabled={uploading || !selectedFile}
+              disabled={uploading || selectedFiles.length === 0}
               className="admin-btn admin-btn-primary mt-4"
             >
-              {uploading ? "Envoi..." : "Ajouter la photo"}
+              {uploading
+                ? "Envoi..."
+                : selectedFiles.length > 1
+                  ? `Ajouter ${selectedFiles.length} photos`
+                  : "Ajouter la photo"}
             </button>
           </form>
 

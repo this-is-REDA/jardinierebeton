@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
+  ChevronLeft,
   ChevronRight,
   Leaf,
   MapPin,
@@ -18,9 +19,12 @@ import type { Finish, ProductPhoto } from "@/lib/data/site-data";
 import {
   defaultPhotoAppearance,
   photoAppearanceClassName,
+  photoAppearanceImageStyle,
   photoAppearanceStyle,
+  photoAppearanceWrapperStyle,
 } from "@/lib/photo-appearance";
 import { formatPriceDH, formatWeightKg } from "@/lib/utils";
+import { VariantPricingTable } from "@/components/products/VariantPricingTable";
 
 type OtherFamily = Pick<
   FamilyCatalogItem,
@@ -46,6 +50,7 @@ export function ProductPageView({
   const [selectedFinish, setSelectedFinish] = useState(
     family.photos[0]?.finish ?? finishes[0]?.name ?? ""
   );
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<DetailTab>("description");
 
   const selectedVariant = family.variants[selectedVariantIndex];
@@ -53,24 +58,85 @@ export function ProductPageView({
   const galleryPhotos = useMemo(() => {
     if (family.photos.length > 0) return family.photos;
 
-    return finishes.map((finish) => ({
+    return finishes.map((finish, index) => ({
+      id: `fallback-${finish.name}`,
       name: family.name,
       finish: finish.name,
       image: family.image,
       familySlug: family.slug,
+      sortOrder: index,
       appearance: family.appearance,
     })) satisfies ProductPhoto[];
   }, [family, finishes]);
 
-  const activePhoto = useMemo(() => {
-    return (
-      galleryPhotos.find((photo) => photo.finish === selectedFinish) ??
-      galleryPhotos[0]
-    );
+  const finishPhotos = useMemo(() => {
+    const normalizedSelected = selectedFinish.trim();
+    const matched = galleryPhotos
+      .filter((photo) => photo.finish.trim() === normalizedSelected)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    if (matched.length > 0) return matched;
+    return galleryPhotos.slice(0, 1);
   }, [galleryPhotos, selectedFinish]);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [selectedFinish]);
+
+  useEffect(() => {
+    if (activeImageIndex >= finishPhotos.length) {
+      setActiveImageIndex(0);
+    }
+  }, [activeImageIndex, finishPhotos.length]);
+
+  useEffect(() => {
+    if (finishPhotos.length <= 1) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        setActiveImageIndex((current) =>
+          current <= 0 ? finishPhotos.length - 1 : current - 1
+        );
+      }
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        setActiveImageIndex((current) =>
+          current >= finishPhotos.length - 1 ? 0 : current + 1
+        );
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [finishPhotos.length]);
+
+  const activePhoto =
+    finishPhotos[activeImageIndex] ?? finishPhotos[0] ?? galleryPhotos[0];
 
   const activeAppearance =
     activePhoto?.appearance ?? family.appearance ?? defaultPhotoAppearance;
+
+  const displayImage =
+    activePhoto?.image || family.image || galleryPhotos[0]?.image || "";
+
+  const canNavigateGallery = finishPhotos.length > 1;
+
+  function selectFinish(finishName: string) {
+    setSelectedFinish(finishName);
+    setActiveImageIndex(0);
+  }
+
+  function showPreviousImage() {
+    setActiveImageIndex((current) =>
+      current <= 0 ? finishPhotos.length - 1 : current - 1
+    );
+  }
+
+  function showNextImage() {
+    setActiveImageIndex((current) =>
+      current >= finishPhotos.length - 1 ? 0 : current + 1
+    );
+  }
 
   const devisLabel = `${family.name} — ${selectedVariant.model} — ${selectedFinish}`;
 
@@ -98,35 +164,69 @@ export function ProductPageView({
               family.isSquare ? "aspect-square" : "aspect-[4/3]"
             }`}
           >
-            <Image
-              key={`${activePhoto?.image}-${selectedFinish}`}
-              src={activePhoto?.image ?? family.image}
-              alt={`${family.name} — ${selectedFinish}`}
-              fill
-              className={`transition duration-500 ${photoAppearanceClassName(activeAppearance.fit)}`}
-              style={photoAppearanceStyle(activeAppearance)}
-              sizes="(max-width: 1024px) 100vw, 55vw"
-              priority
-              unoptimized={(activePhoto?.image ?? family.image).includes(
-                "supabase.co"
-              )}
-            />
+            {displayImage ? (
+              <div
+                className="absolute inset-0"
+                style={photoAppearanceWrapperStyle(activeAppearance)}
+              >
+                <Image
+                  key={activePhoto?.id ?? `${displayImage}-${selectedFinish}`}
+                  src={displayImage}
+                  alt={`${family.name} — ${selectedFinish}${
+                    canNavigateGallery ? ` (${activeImageIndex + 1})` : ""
+                  }`}
+                  fill
+                  className={`transition duration-500 ${photoAppearanceClassName(activeAppearance.fit)}`}
+                  style={photoAppearanceImageStyle(activeAppearance)}
+                  sizes="(max-width: 1024px) 100vw, 55vw"
+                  priority
+                  unoptimized={displayImage.includes("supabase.co")}
+                />
+              </div>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-[#a3a3a3]">
+                Photo à venir
+              </div>
+            )}
+
+            {canNavigateGallery && (
+              <>
+                <button
+                  type="button"
+                  onClick={showPreviousImage}
+                  className="product-gallery-nav product-gallery-nav-prev"
+                  aria-label="Image précédente"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  type="button"
+                  onClick={showNextImage}
+                  className="product-gallery-nav product-gallery-nav-next"
+                  aria-label="Image suivante"
+                >
+                  <ChevronRight size={20} />
+                </button>
+                <p className="product-gallery-counter">
+                  {activeImageIndex + 1} / {finishPhotos.length}
+                </p>
+              </>
+            )}
           </div>
 
-          {galleryPhotos.length > 1 && (
+          {finishPhotos.length > 1 && (
             <div className="product-gallery-thumbs mt-4 grid grid-cols-4 gap-3 sm:grid-cols-5 lg:grid-cols-4">
-              {galleryPhotos.map((photo) => {
+              {finishPhotos.map((photo, index) => {
                 const appearance = photo.appearance ?? defaultPhotoAppearance;
-                const isActive = photo.finish === selectedFinish;
-                const finish = finishes.find((item) => item.name === photo.finish);
+                const isActive = index === activeImageIndex;
 
                 return (
                   <button
-                    key={`${photo.finish}-${photo.image}`}
+                    key={photo.id ?? `${photo.finish}-${photo.image}-${index}`}
                     type="button"
-                    onClick={() => setSelectedFinish(photo.finish)}
+                    onClick={() => setActiveImageIndex(index)}
                     className={`product-thumb ${isActive ? "product-thumb-active" : ""}`}
-                    aria-label={`Voir ${photo.finish}`}
+                    aria-label={`Voir l'image ${index + 1}`}
                     aria-pressed={isActive}
                   >
                     <div
@@ -134,22 +234,21 @@ export function ProductPageView({
                         family.isSquare ? "aspect-square" : "aspect-[4/3]"
                       }`}
                     >
-                      <Image
-                        src={photo.image}
-                        alt={photo.finish}
-                        fill
-                        className={photoAppearanceClassName(appearance.fit)}
-                        style={photoAppearanceStyle(appearance)}
-                        sizes="96px"
-                        unoptimized={photo.image.includes("supabase.co")}
-                      />
+                      <div
+                        className="absolute inset-0"
+                        style={photoAppearanceWrapperStyle(appearance)}
+                      >
+                        <Image
+                          src={photo.image}
+                          alt={`${selectedFinish} — photo ${index + 1}`}
+                          fill
+                          className={photoAppearanceClassName(appearance.fit)}
+                          style={photoAppearanceImageStyle(appearance)}
+                          sizes="96px"
+                          unoptimized={photo.image.includes("supabase.co")}
+                        />
+                      </div>
                     </div>
-                    {finish && (
-                      <span
-                        className="product-thumb-dot"
-                        style={{ backgroundColor: finish.hex }}
-                      />
-                    )}
                   </button>
                 );
               })}
@@ -184,14 +283,14 @@ export function ProductPageView({
               <div className="mt-3 flex flex-wrap gap-2">
                 {finishes.map((finish) => {
                   const hasPhoto = galleryPhotos.some(
-                    (photo) => photo.finish === finish.name
+                    (photo) => photo.finish.trim() === finish.name.trim()
                   );
 
                   return (
                     <button
                       key={finish.name}
                       type="button"
-                      onClick={() => setSelectedFinish(finish.name)}
+                      onClick={() => selectFinish(finish.name)}
                       className={`product-swatch ${
                         selectedFinish === finish.name
                           ? "product-swatch-active"
@@ -293,11 +392,11 @@ export function ProductPageView({
         <div className="product-tabs-nav" role="tablist">
           {(
             [
-              ["description", "Description"],
-              ["specs", "Caractéristiques"],
-              ["dimensions", "Toutes les dimensions"],
+              ["description", "Description", "Description"],
+              ["specs", "Caractéristiques", "Caractéristiques"],
+              ["dimensions", "Dimensions", "Toutes les dimensions"],
             ] as const
-          ).map(([id, label]) => (
+          ).map(([id, mobileLabel, desktopLabel]) => (
             <button
               key={id}
               type="button"
@@ -308,7 +407,8 @@ export function ProductPageView({
                 activeTab === id ? "product-tab-btn-active" : ""
               }`}
             >
-              {label}
+              <span className="sm:hidden">{mobileLabel}</span>
+              <span className="hidden sm:inline">{desktopLabel}</span>
             </button>
           ))}
         </div>
@@ -372,67 +472,10 @@ export function ProductPageView({
 
           {activeTab === "dimensions" && (
             <div className="product-tab-content">
-              <div className="overflow-x-auto rounded-sm border border-[rgba(0,0,0,0.08)]">
-                <table className="catalogue-table w-full min-w-[720px] text-left text-sm">
-                  <thead className="bg-[#f5f5f5]">
-                    <tr>
-                      <th className="label-caps px-4 py-4 font-medium">
-                        Modèle
-                      </th>
-                      <th className="label-caps px-4 py-4 font-medium">
-                        L (cm)
-                      </th>
-                      <th className="label-caps px-4 py-4 font-medium">
-                        l (cm)
-                      </th>
-                      <th className="label-caps px-4 py-4 font-medium">
-                        H (cm)
-                      </th>
-                      <th className="label-caps px-4 py-4 font-medium">
-                        Ép. (cm)
-                      </th>
-                      <th className="label-caps px-4 py-4 font-medium">
-                        Poids
-                      </th>
-                      <th className="label-caps px-4 py-4 font-medium">
-                        Prix H.T
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {family.variants.map((variant, index) => (
-                      <tr
-                        key={variant.model}
-                        className={`border-t border-[rgba(0,0,0,0.06)] ${
-                          selectedVariantIndex === index ? "bg-[#fafafa]" : ""
-                        }`}
-                      >
-                        <td className="px-4 py-4 font-medium text-[#171717]">
-                          {variant.model}
-                        </td>
-                        <td className="px-4 py-4 text-[#525252]">
-                          {variant.length_cm}
-                        </td>
-                        <td className="px-4 py-4 text-[#525252]">
-                          {variant.width_cm}
-                        </td>
-                        <td className="px-4 py-4 text-[#525252]">
-                          {variant.height_cm}
-                        </td>
-                        <td className="px-4 py-4 text-[#525252]">
-                          {variant.thickness_cm}
-                        </td>
-                        <td className="px-4 py-4 text-[#525252]">
-                          {formatWeightKg(variant.weight_kg)} kg
-                        </td>
-                        <td className="px-4 py-4 font-medium text-[#171717]">
-                          {formatPriceDH(variant.price)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <VariantPricingTable
+                variants={family.variants}
+                highlightIndex={selectedVariantIndex}
+              />
             </div>
           )}
         </div>
@@ -440,7 +483,7 @@ export function ProductPageView({
 
       {otherFamilies.length > 0 && (
         <section className="mt-20 border-t border-[rgba(0,0,0,0.08)] pt-12">
-          <div className="flex items-end justify-between gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="label-caps">Vous aimerez aussi</p>
               <h2 className="mt-3 font-serif text-2xl text-[#171717]">

@@ -44,11 +44,28 @@ export function photoAppearanceClassName(fit: PhotoFit): string {
   return fit === "cover" ? "object-cover" : "object-contain";
 }
 
-export function photoAppearanceStyle(appearance: PhotoAppearance): CSSProperties {
+export function photoAppearanceImageStyle(
+  appearance: PhotoAppearance
+): CSSProperties {
   return {
     objectPosition: `${appearance.positionX}% ${appearance.positionY}%`,
+  };
+}
+
+export function photoAppearanceWrapperStyle(
+  appearance: PhotoAppearance
+): CSSProperties {
+  return {
     transform:
       appearance.scale !== 100 ? `scale(${appearance.scale / 100})` : undefined,
     transformOrigin: `${appearance.positionX}% ${appearance.positionY}%`,
+  };
+}
+
+/** @deprecated Prefer photoAppearanceImageStyle + photoAppearanceWrapperStyle */
+export function photoAppearanceStyle(appearance: PhotoAppearance): CSSProperties {
+  return {
+    ...photoAppearanceImageStyle(appearance),
+    ...photoAppearanceWrapperStyle(appearance),
   };
 }

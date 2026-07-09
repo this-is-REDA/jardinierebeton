@@ -32,9 +32,9 @@ export function buildFamilyCatalogItems(
   photos: ProductPhoto[]
 ): FamilyCatalogItem[] {
   return products.map((product) => {
-    const familyPhotos = photos.filter(
-      (photo) => photo.familySlug === product.slug
-    );
+    const familyPhotos = photos
+      .filter((photo) => photo.familySlug === product.slug)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     const coverPhoto = getFamilyCoverPhoto(product.slug, photos);
     const prices = product.variants.map((variant) => variant.price);
 
