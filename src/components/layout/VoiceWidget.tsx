@@ -1,7 +1,7 @@
 import Script from "next/script";
 import { brand } from "@/lib/data/site-data";
 
-const QUBOT_WIDGET_ID = "wgt_wh6lRYs9eYeO9ZwAAaxoiHWx";
+const QUBOT_WIDGET_ID = "wgt_jIEr5NjHBHlFU_zE7iZxQ8JE";
 
 const VOICE_LANGUAGES = [
   { code: "fr", name: "Français", flag: "🇫🇷" },
